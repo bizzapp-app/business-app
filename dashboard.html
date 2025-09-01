@@ -21,6 +21,7 @@
       <input type="number" id="itemQuantity" placeholder="Quantity" required>
       <button type="submit">Add / Update Item</button>
     </form>
+    
     <h3>Available Stock</h3>
     <table id="stockTable">
       <thead>
@@ -34,6 +35,15 @@
       <tbody></tbody>
     </table>
   </div>
+   <div class="card">
+  <h2>Employee: Sell Product</h2>
+  <form id="sellForm">
+    <select id="sellItem" required></select>
+    <input type="number" id="sellQty" placeholder="Quantity" required>
+    <button type="submit">Sell</button>
+  </form>
+</div>
+
 
   <div class="card">
     <h2>Admin: Sales Management</h2>
@@ -57,4 +67,5 @@
   <script src="dashboard.js"></script>
 </body>
 </html>
+
 
