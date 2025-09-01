@@ -2,36 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS Terminal</title>
+  <title>POS Terminal - SmartPOS</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div class="navbar">
-    <h2>POS Terminal</h2>
-    <button onclick="logout()">Logout</button>
-  </div>
+<body class="pos-page">
+  <header>
+    <h1>POS Terminal</h1>
+    <button id="logoutBtn">Logout</button>
+  </header>
 
-  <div class="container">
-    <div class="card">
-      <h3>Products</h3>
+  <main>
+    <section>
+      <h2>Available Products</h2>
       <ul id="productList"></ul>
-    </div>
+    </section>
 
-    <div class="card">
-      <h3>Cart</h3>
+    <section>
+      <h2>Cart</h2>
       <ul id="cartList"></ul>
-      <p>Total: <span id="cartTotal">0</span></p>
+      <p>Total: $<span id="cartTotal">0.00</span></p>
       <button onclick="checkout()">Checkout</button>
-    </div>
+    </section>
 
-    <div class="card">
-      <h3>Receipt</h3>
-      <div id="receipt"></div>
-      <button onclick="printReceipt()">Print Receipt</button>
-    </div>
-  </div>
+    <section>
+      <h2>Receipt</h2>
+      <pre id="receipt"></pre>
+    </section>
+  </main>
 
-  <script src="pos.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
