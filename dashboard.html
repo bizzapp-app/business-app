@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📊 Business Dashboard</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Sales</h2>
+      <input type="text" id="productName" placeholder="Product Name">
+      <input type="number" id="productPrice" placeholder="Price">
+      <button onclick="addSale()">Add Sale</button>
+      <ul id="salesList"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Expenses</h2>
+      <input type="text" id="expenseName" placeholder="Expense Name">
+      <input type="number" id="expenseAmount" placeholder="Amount">
+      <button onclick="addExpense()">Add Expense</button>
+      <ul id="expensesList"></ul>
+    </div>
+
+    <div class="card">
+      <h2>Summary</h2>
+      <p>Total Sales: <span id="totalSales">0</span></p>
+      <p>Total Expenses: <span id="totalExpenses">0</span></p>
+      <p>Net Profit: <span id="netProfit">0</span></p>
+    </div>
+
+    <!-- Charts -->
+    <div class="card">
+      <h2>Business Overview (Charts)</h2>
+      <canvas id="salesChart"></canvas>
+      <canvas id="expensesChart" style="margin-top:25px;"></canvas>
+      <canvas id="profitChart" style="margin-top:25px;"></canvas>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
