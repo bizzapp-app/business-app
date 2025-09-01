@@ -1,71 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Business Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SmartBiz Manager — Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>📊 Business Dashboard</h1>
-    <button onclick="logout()">Logout</button>
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/profile.png" alt="" class="logo-small">
+      <h1>SmartBiz Dashboard</h1>
+    </div>
+    <div class="top-actions">
+      <div id="who" class="who">—</div>
+      <button class="btn danger" id="logoutBtn">Logout</button>
+    </div>
   </header>
 
- <main>
-  <div class="card">
-    <h2>Admin: Stock Management</h2>
-    <form id="stockForm">
-      <input type="text" id="itemName" placeholder="Item Name" required>
-      <input type="number" id="itemPrice" placeholder="Price" required>
-      <input type="number" id="itemQuantity" placeholder="Quantity" required>
-      <button type="submit">Add / Update Item</button>
-    </form>
-    
-    <h3>Available Stock</h3>
-    <table id="stockTable">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Price</th>
-          <th>Quantity</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-   <div class="card">
-  <h2>Employee: Sell Product</h2>
-  <form id="sellForm">
-    <select id="sellItem" required></select>
-    <input type="number" id="sellQty" placeholder="Quantity" required>
-    <button type="submit">Sell</button>
-  </form>
-</div>
+  <main class="layout">
+    <!-- Overview -->
+    <section class="card overview-card">
+      <h2>Overview</h2>
+      <div id="overview" class="grid-4">
+        <div class="stat"><small>Total stock value</small><div id="stockValue">KES 0.00</div></div>
+        <div class="stat"><small>Sales Today</small><div id="salesToday">KES 0.00</div></div>
+        <div class="stat"><small>Top-selling item</small><div id="topItem">N/A</div></div>
+        <div class="stat"><small>Employees logged in</small><div id="loggedEmployees">0</div></div>
+      </div>
+    </section>
 
+    <!-- Left column: stock + sell -->
+    <section class="column">
+      <div class="card">
+        <h2>Stock Management (Admin)</h2>
+        <form id="stockForm" class="form-inline">
+          <input id="itemName" placeholder="Item name" required>
+          <input id="itemPrice" placeholder="Price (KES)" type="number" step="0.01" required>
+          <input id="itemQty" placeholder="Quantity" type="number" required>
+          <button class="btn primary" type="submit" id="stockSaveBtn">Add / Update</button>
+        </form>
 
-  <div class="card">
-    <h2>Admin: Sales Management</h2>
-    <h3>Sales Records</h3>
-    <table id="salesTable">
-      <thead>
-        <tr>
-          <th>Product</th>
-          <th>Price</th>
-          <th>Employee</th>
-          <th>Date</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</main>
+        <table class="table" id="stockTable">
+          <thead><tr><th>Item</th><th>Price (KES)</th><th>Qty</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Sell Product (Staff)</h2>
+        <form id="sellForm" class="form-inline">
+          <select id="sellSelect" required></select>
+          <input id="sellQty" type="number" value="1" min="1" required>
+          <button class="btn success" type="submit">Sell</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Expenses</h2>
+        <form id="expenseForm" class="form-inline">
+          <input id="expenseName" placeholder="Expense name" required>
+          <input id="expenseAmt" placeholder="Amount (KES)" type="number" step="0.01" required>
+          <button class="btn primary" type="submit">Add Expense</button>
+        </form>
+
+        <table class="table" id="expenseTable">
+          <thead><tr><th>Item</th><th>Amount (KES)</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Right column: sales + reports + charts -->
+    <section class="column">
+      <div class="card">
+        <h2>Sales Records</h2>
+        <table class="table" id="salesTable">
+          <thead><tr><th>Product</th><th>Qty</th><th>Unit KES</th><th>Total KES</th><th>Employee</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Profit & Loss</h2>
+        <p><strong>Total Sales:</strong> <span id="totalSales">KES 0.00</span></p>
+        <p><strong>Total Expenses:</strong> <span id="totalExpenses">KES 0.00</span></p>
+        <p><strong>Net Profit:</strong> <span id="netProfit">KES 0.00</span></p>
+      </div>
+
+      <div class="card">
+        <h2>Charts</h2>
+        <canvas id="salesChart"></canvas>
+        <canvas id="expensesChart" style="margin-top:18px;"></canvas>
+        <canvas id="profitChart" style="margin-top:18px;"></canvas>
+      </div>
+    </section>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>
-
-
