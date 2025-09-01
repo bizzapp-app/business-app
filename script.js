@@ -3,8 +3,8 @@
 // Seed default users (if none)
 if (!localStorage.getItem('users')) {
   const users = [
-    { username: 'admin', password: 'admin123', role: 'admin', loggedIn: false },
-    { username: 'employee1', password: 'staff123', role: 'employee', loggedIn: false }
+    { username: 'admin', password: '1234', role: 'admin', loggedIn: false },
+    { username: 'brian', password: '1234', role: 'employee', loggedIn: false }
   ];
   localStorage.setItem('users', JSON.stringify(users));
 }
@@ -32,4 +32,5 @@ if (loginForm) {
     }
   });
 }
+
 
