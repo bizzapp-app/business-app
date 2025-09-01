@@ -15,17 +15,14 @@ header .brand{display:flex;gap:12px;align-items:center;font-weight:700}
 .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
 .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(30,30,60,0.06)}
 .small{font-size:13px;color:var(--muted)}
-/* Login */
 .center{display:grid;place-items:center;height:calc(100vh - 72px)}
-.login-card{width:420px;padding:22px}
-.field{display:flex;flex-direction:column;margin-bottom:12px}
+.login-card{width:420px;padding:22px;text-align:center}
+.field{display:flex;flex-direction:column;margin-bottom:12px;text-align:left}
 input,select,textarea{padding:10px;border-radius:8px;border:1px solid #e6e8f0}
 button{background:var(--brand);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
 .muted{color:var(--muted)}
-/* Small buttons */
 .small-btn{padding:6px 10px;border-radius:6px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-size:13px;cursor:pointer;}
 .small-btn:hover{background:#2d46a3;}
-/* POS layout */
 .topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
 .search{display:flex;gap:8px}
 .product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:520px;overflow:auto;padding:6px}
@@ -38,10 +35,8 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
 .report-filters{display:flex;gap:8px;flex-wrap:wrap}
 .footer-note{font-size:13px;color:var(--muted);margin-top:8px}
-/* receipt print */
 #receipt-print{display:block;padding:14px;max-width:340px;margin:14px auto;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
 @media print{body *{visibility:hidden}#receipt-print, #receipt-print *{visibility:visible}#receipt-print{position:fixed;left:0;top:0;width:100%}}
-/* responsive */
 @media (max-width:960px){.grid{grid-template-columns:1fr}.product-list{max-height:320px}}
 </style>
 </head>
@@ -53,25 +48,24 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
 
 <div id="app"></div>
 
-<!-- login template -->
+<!-- LOGIN TEMPLATE -->
 <template id="login-template">
   <div class="center">
     <div class="card login-card">
-      <h2><div class="logo">SB</div> SmartBizz — Login</h2>
+      <div class="logo" style="width:60px;height:60px;margin:0 auto 10px;font-size:20px">SB</div>
+      <h2>SmartBizz — Login</h2>
       <div class="small muted">Choose role and sign in</div>
       <div class="field"><label>Role</label>
         <select id="role-select"><option value="admin">Admin</option><option value="staff">Staff (Cashier)</option></select>
       </div>
       <div class="field"><label>Username</label><input id="username" placeholder="username" /></div>
       <div class="field"><label>Password</label><input id="password" type="password" placeholder="password" /></div>
-      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-        <button id="login-btn">Sign in</button>
-      </div>
+      <button id="login-btn">Sign in</button>
     </div>
   </div>
 </template>
 
-<!-- admin template -->
+<!-- ADMIN TEMPLATE -->
 <template id="admin-template">
   <div class="container">
     <div class="topbar">
@@ -83,24 +77,12 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="btn-export" class="small-btn">Export Data</button>
-        <button id="btn-import" class="small-btn">Import Data</button>
         <button id="btn-logout" class="small-btn">Logout</button>
       </div>
     </div>
-
     <div class="grid">
       <div>
         <div class="card">
-          <h3>Overview</h3>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Total Sales</div><div id="total-sales">KSh 0</div></div>
-            <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Stock Items</div><div id="stock-count">0</div></div>
-            <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Today Sales</div><div id="today-sales">KSh 0</div></div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:12px">
           <h3>Stock Management</h3>
           <div style="display:flex;gap:8px;margin-bottom:8px">
             <input id="prod-name" placeholder="Product name" />
@@ -110,7 +92,6 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
           </div>
           <div id="products-table"></div>
         </div>
-
         <div class="card" style="margin-top:12px">
           <h3>Employees</h3>
           <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -121,7 +102,6 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
           </div>
           <div id="emp-table"></div>
         </div>
-
         <div class="card" style="margin-top:12px">
           <h3>Expenses</h3>
           <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -132,31 +112,20 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
           <div id="expenses-list"></div>
         </div>
       </div>
-
       <div>
         <div class="card">
           <h3>Sales Reports</h3>
           <div class="report-filters">
-            <input type="date" id="filter-from" />
-            <input type="date" id="filter-to" />
-            <select id="filter-staff"><option value="">All staff</option></select>
-            <input id="filter-product" placeholder="Product name" />
-            <button id="apply-filter" class="small-btn">Apply Filter</button>
             <button id="print-report" class="small-btn">Print Report</button>
           </div>
           <div id="report-table" style="margin-top:12px;max-height:420px;overflow:auto"></div>
-        </div>
-
-        <div class="card" style="margin-top:12px">
-          <h3>Void / Canceled Receipts</h3>
-          <div id="void-list"></div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<!-- staff template -->
+<!-- STAFF TEMPLATE -->
 <template id="staff-template">
   <div class="container">
     <div class="topbar">
@@ -168,26 +137,16 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="btn-sales-history" class="small-btn">My Sales</button>
         <button id="btn-logout2" class="small-btn">Logout</button>
       </div>
     </div>
-
     <div class="grid">
       <div>
         <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <input id="search-prod" placeholder="Search product by name" style="width:420px;padding:10px;border-radius:8px;border:1px solid #e6e8f0" />
-            </div>
-            <div>
-              <button id="clear-cart" class="small-btn">Clear Cart</button>
-            </div>
-          </div>
+          <input id="search-prod" placeholder="Search product" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e6e8f0;margin-bottom:8px" />
           <div class="product-list" id="staff-products"></div>
         </div>
       </div>
-
       <div>
         <div class="card cart">
           <h3>Cart</h3>
@@ -205,237 +164,229 @@ th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
 
 <script>
 // =====================
-// DEFAULT DATA
+// INITIALIZE LOCALSTORAGE
 // =====================
-const defaultUsers=[
-  {username:'admin',password:'admin1234',role:'admin'},
-  {username:'staff',password:'1234',role:'staff'}
-];
+if(!localStorage.getItem('users')) {
+    const defaultUsers = [
+        {username:'admin', password:'admin1234', role:'admin'},
+        {username:'staff', password:'1234', role:'staff'}
+    ];
+    localStorage.setItem('users', JSON.stringify(defaultUsers));
+}
 
-let users=JSON.parse(localStorage.getItem('users'))||[];
-// ensure default users exist
-defaultUsers.forEach(u=>{
-  if(!users.some(x=>x.username===u.username && x.role===u.role)) users.push(u);
-});
-localStorage.setItem('users',JSON.stringify(users));
-
-let products=JSON.parse(localStorage.getItem('products'))||[];
-let employees=JSON.parse(localStorage.getItem('employees'))||[];
-let expenses=JSON.parse(localStorage.getItem('expenses'))||[];
-let sales=JSON.parse(localStorage.getItem('sales'))||[];
-let voids=JSON.parse(localStorage.getItem('voids'))||[];
+let users = JSON.parse(localStorage.getItem('users')) || [];
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let employees = JSON.parse(localStorage.getItem('employees')) || [];
+let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+let sales = JSON.parse(localStorage.getItem('sales')) || [];
 
 // =====================
 // APP RENDER
 // =====================
-const app=document.getElementById('app');
+const app = document.getElementById('app');
 
 function renderLogin(){
-  app.innerHTML='';
-  const tpl=document.getElementById('login-template').content.cloneNode(true);
-  app.appendChild(tpl);
-  document.getElementById('login-btn').onclick=login;
+    app.innerHTML='';
+    const tpl=document.getElementById('login-template').content.cloneNode(true);
+    app.appendChild(tpl);
+    document.getElementById('login-btn').onclick=login;
 }
 
 function login(){
-  const role=document.getElementById('role-select').value;
-  const username=document.getElementById('username').value;
-  const password=document.getElementById('password').value;
-  const user=users.find(u=>u.username===username && u.password===password && u.role===role);
-  if(user){
-    localStorage.setItem('currentUser',JSON.stringify(user));
-    if(role==='admin') renderAdmin();
-    else renderStaff();
-  } else alert('Invalid credentials');
+    const role=document.getElementById('role-select').value;
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value.trim();
+    const user=users.find(u=>u.username===username && u.password===password && u.role===role);
+    if(user){
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        role==='admin'?renderAdmin():renderStaff();
+    } else {
+        alert('Invalid credentials');
+    }
 }
 
 function logout(){localStorage.removeItem('currentUser');renderLogin();}
 
 // =====================
-// RENDER ADMIN
+// ADMIN
 // =====================
 function renderAdmin(){
-  app.innerHTML='';
-  const tpl=document.getElementById('admin-template').content.cloneNode(true);
-  app.appendChild(tpl);
-  const user=JSON.parse(localStorage.getItem('currentUser'));
-  document.getElementById('admin-email').innerText=user.username;
+    app.innerHTML='';
+    const tpl=document.getElementById('admin-template').content.cloneNode(true);
+    app.appendChild(tpl);
+    const user=JSON.parse(localStorage.getItem('currentUser'));
+    document.getElementById('admin-email').innerText=user.username;
+    document.getElementById('btn-logout').onclick=logout;
 
-  document.getElementById('btn-logout').onclick=logout;
-
-  // STOCK
-  function renderProducts(){
-    const table=document.createElement('table');
-    table.innerHTML='<tr><th>Name</th><th>Price</th><th>Qty</th><th>Actions</th></tr>';
-    products.forEach((p,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${p.name}</td><td>${p.price}</td><td>${p.qty}</td>
-        <td>
-          <button class="small-btn" onclick="editProduct(${i})">Edit</button>
-          <button class="small-btn" onclick="deleteProduct(${i})">Delete</button>
-        </td>`;
-      table.appendChild(tr);
-    });
-    document.getElementById('products-table').innerHTML='';document.getElementById('products-table').appendChild(table);
-  }
-  renderProducts();
-
-  document.getElementById('add-prod').onclick=()=>{
-    const name=document.getElementById('prod-name').value;
-    const price=Number(document.getElementById('prod-price').value);
-    const qty=Number(document.getElementById('prod-qty').value);
-    if(name && !isNaN(price) && !isNaN(qty)){
-      products.push({name,price,qty});
-      localStorage.setItem('products',JSON.stringify(products));
-      renderProducts();
-    } else alert('Fill all product fields correctly');
-  }
-
-  window.editProduct=(i)=>{
-    const p=products[i];
-    const newName=prompt('Product name',p.name);
-    const newPrice=Number(prompt('Price',p.price));
-    const newQty=Number(prompt('Qty',p.qty));
-    if(newName && !isNaN(newPrice) && !isNaN(newQty)){
-      products[i]={name:newName,price:newPrice,qty:newQty};
-      localStorage.setItem('products',JSON.stringify(products));
-      renderProducts();
+    function renderProducts(){
+        const table=document.createElement('table');
+        table.innerHTML='<tr><th>Name</th><th>Price</th><th>Qty</th><th>Actions</th></tr>';
+        products.forEach((p,i)=>{
+            const tr=document.createElement('tr');
+            tr.innerHTML=`<td>${p.name}</td><td>${p.price}</td><td>${p.qty}</td>
+            <td>
+            <button class="small-btn" onclick="editProduct(${i})">Edit</button>
+            <button class="small-btn" onclick="deleteProduct(${i})">Delete</button>
+            </td>`;
+            table.appendChild(tr);
+        });
+        document.getElementById('products-table').innerHTML='';document.getElementById('products-table').appendChild(table);
     }
-  }
+    renderProducts();
 
-  window.deleteProduct=(i)=>{
-    if(confirm('Delete this product?')){products.splice(i,1);localStorage.setItem('products',JSON.stringify(products));renderProducts();}
-  }
+    document.getElementById('add-prod').onclick=()=>{
+        const name=document.getElementById('prod-name').value.trim();
+        const price=Number(document.getElementById('prod-price').value);
+        const qty=Number(document.getElementById('prod-qty').value);
+        if(name && !isNaN(price) && !isNaN(qty)){
+            products.push({name,price,qty});
+            localStorage.setItem('products',JSON.stringify(products));
+            renderProducts();
+        } else alert('Fill all product fields correctly');
+    }
 
-  // EMPLOYEES
-  function renderEmployees(){
-    const table=document.createElement('table');
-    table.innerHTML='<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
-    employees.forEach((e,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${e.username}</td><td>${e.role}</td>
-        <td><button class="small-btn" onclick="deleteEmp(${i})">Delete</button></td>`;
-      table.appendChild(tr);
-    });
-    document.getElementById('emp-table').innerHTML='';document.getElementById('emp-table').appendChild(table);
-  }
-  renderEmployees();
+    window.editProduct=(i)=>{
+        const p=products[i];
+        const newName=prompt('Product name',p.name);
+        const newPrice=Number(prompt('Price',p.price));
+        const newQty=Number(prompt('Qty',p.qty));
+        if(newName && !isNaN(newPrice) && !isNaN(newQty)){
+            products[i]={name:newName,price:newPrice,qty:newQty};
+            localStorage.setItem('products',JSON.stringify(products));
+            renderProducts();
+        }
+    }
 
-  document.getElementById('add-emp').onclick=()=>{
-    const username=document.getElementById('emp-user').value;
-    const password=document.getElementById('emp-pass').value;
-    const role=document.getElementById('emp-role').value;
-    if(username && password){
-      employees.push({username,password,role});
-      localStorage.setItem('employees',JSON.stringify(employees));
-      renderEmployees();
-    } else alert('Fill all employee fields');
-  }
+    window.deleteProduct=(i)=>{
+        if(confirm('Delete this product?')){products.splice(i,1);localStorage.setItem('products',JSON.stringify(products));renderProducts();}
+    }
 
-  window.deleteEmp=(i)=>{if(confirm('Delete employee?')){employees.splice(i,1);localStorage.setItem('employees',JSON.stringify(employees));renderEmployees();}}
+    // Employees
+    function renderEmployees(){
+        const table=document.createElement('table');
+        table.innerHTML='<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
+        employees.forEach((e,i)=>{
+            const tr=document.createElement('tr');
+            tr.innerHTML=`<td>${e.username}</td><td>${e.role}</td>
+            <td><button class="small-btn" onclick="deleteEmp(${i})">Delete</button></td>`;
+            table.appendChild(tr);
+        });
+        document.getElementById('emp-table').innerHTML='';document.getElementById('emp-table').appendChild(table);
+    }
+    renderEmployees();
 
-  // EXPENSES
-  function renderExpenses(){
-    const list=document.createElement('ul');
-    expenses.forEach((e,i)=>{
-      const li=document.createElement('li');
-      li.innerHTML=`${e.desc} - KSh ${e.amt} <button class="small-btn" onclick="deleteExp(${i})">Delete</button>`;
-      list.appendChild(li);
-    });
-    document.getElementById('expenses-list').innerHTML='';document.getElementById('expenses-list').appendChild(list);
-  }
-  renderExpenses();
+    document.getElementById('add-emp').onclick=()=>{
+        const username=document.getElementById('emp-user').value.trim();
+        const password=document.getElementById('emp-pass').value.trim();
+        const role=document.getElementById('emp-role').value;
+        if(username && password){
+            employees.push({username,password,role});
+            localStorage.setItem('employees',JSON.stringify(employees));
+            renderEmployees();
+        } else alert('Fill all employee fields');
+    }
 
-  document.getElementById('add-exp').onclick=()=>{
-    const desc=document.getElementById('exp-desc').value;
-    const amt=Number(document.getElementById('exp-amt').value);
-    if(desc && !isNaN(amt)){
-      expenses.push({desc,amt});
-      localStorage.setItem('expenses',JSON.stringify(expenses));
-      renderExpenses();
-    } else alert('Fill expense correctly');
-  }
+    window.deleteEmp=(i)=>{if(confirm('Delete employee?')){employees.splice(i,1);localStorage.setItem('employees',JSON.stringify(employees));renderEmployees();}}
 
-  window.deleteExp=(i)=>{expenses.splice(i,1);localStorage.setItem('expenses',JSON.stringify(expenses));renderExpenses();}
+    // Expenses
+    function renderExpenses(){
+        const list=document.createElement('ul');
+        expenses.forEach((e,i)=>{
+            const li=document.createElement('li');li.innerHTML=`${e.desc} - KSh ${e.amt} <button class="small-btn" onclick="deleteExp(${i})">Delete</button>`;
+            list.appendChild(li);
+        });
+        document.getElementById('expenses-list').innerHTML='';document.getElementById('expenses-list').appendChild(list);
+    }
+    renderExpenses();
 
-  // REPORTS
-  const reportTable=document.getElementById('report-table');
-  function renderReport(){
-    const table=document.createElement('table');
-    table.innerHTML='<tr><th>Staff</th><th>Items</th><th>Total</th><th>Date</th></tr>';
-    sales.forEach(s=>{
-      const items=s.items.map(i=>`${i.name} x ${i.qty}`).join(', ');
-      table.innerHTML+=`<tr><td>${s.user}</td><td>${items}</td><td>KSh ${s.total}</td><td>${new Date(s.date).toLocaleString()}</td></tr>`;
-    });
-    reportTable.innerHTML='';reportTable.appendChild(table);
-  }
-  renderReport();
-  document.getElementById('print-report').onclick=()=>window.print();
+    document.getElementById('add-exp').onclick=()=>{
+        const desc=document.getElementById('exp-desc').value.trim();
+        const amt=Number(document.getElementById('exp-amt').value);
+        if(desc && !isNaN(amt)){
+            expenses.push({desc,amt});
+            localStorage.setItem('expenses',JSON.stringify(expenses));
+            renderExpenses();
+        } else alert('Fill expense correctly');
+    }
+
+    window.deleteExp=(i)=>{expenses.splice(i,1);localStorage.setItem('expenses',JSON.stringify(expenses));renderExpenses();}
+
+    // Reports
+    function renderReport(){
+        const table=document.createElement('table');
+        table.innerHTML='<tr><th>Staff</th><th>Items</th><th>Total</th><th>Date</th></tr>';
+        sales.forEach(s=>{
+            const items=s.items.map(i=>`${i.name} x ${i.qty}`).join(', ');
+            table.innerHTML+=`<tr><td>${s.user}</td><td>${items}</td><td>KSh ${s.total}</td><td>${new Date(s.date).toLocaleString()}</td></tr>`;
+        });
+        document.getElementById('report-table').innerHTML='';document.getElementById('report-table').appendChild(table);
+    }
+    renderReport();
+    document.getElementById('print-report').onclick=()=>window.print();
 }
 
 // =====================
-// RENDER STAFF
+// STAFF
 // =====================
 function renderStaff(){
-  app.innerHTML='';
-  const tpl=document.getElementById('staff-template').content.cloneNode(true);
-  app.appendChild(tpl);
-  const user=JSON.parse(localStorage.getItem('currentUser'));
-  document.getElementById('staff-email').innerText=user.username;
-  document.getElementById('btn-logout2').onclick=logout;
+    app.innerHTML='';
+    const tpl=document.getElementById('staff-template').content.cloneNode(true);
+    app.appendChild(tpl);
+    const user=JSON.parse(localStorage.getItem('currentUser'));
+    document.getElementById('staff-email').innerText=user.username;
+    document.getElementById('btn-logout2').onclick=logout;
 
-  const prodContainer=document.getElementById('staff-products');
-  function renderProdList(){
-    prodContainer.innerHTML='';
-    products.forEach((p,i)=>{
-      const div=document.createElement('div');div.className='product';
-      div.innerHTML=`<div class="name">${p.name}</div>
-        <div>KSh ${p.price}</div>
-        <div>Stock: ${p.qty}</div>
-        <div style="display:flex;gap:6px">
-          <button class="small-btn" onclick="addCart(${i})">Add</button>
-        </div>`;
-      prodContainer.appendChild(div);
-    });
-  }
-  renderProdList();
+    const prodContainer=document.getElementById('staff-products');
+    function renderProdList(){
+        prodContainer.innerHTML='';
+        products.forEach((p,i)=>{
+            const div=document.createElement('div');div.className='product';
+            div.innerHTML=`<div class="name">${p.name}</div>
+            <div>KSh ${p.price}</div>
+            <div>Stock: ${p.qty}</div>
+            <div style="display:flex;gap:6px">
+            <button class="small-btn" onclick="addCart(${i})">Add</button>
+            </div>`;
+            prodContainer.appendChild(div);
+        });
+    }
+    renderProdList();
 
-  let cart=[];
-  function updateCart(){
-    const cDiv=document.getElementById('cart-items');cDiv.innerHTML='';
-    let total=0;
-    cart.forEach((item,i)=>{
-      total+=item.price*item.qty;
-      const row=document.createElement('div');row.className='cart-row';
-      row.innerHTML=`${item.name} - KSh ${item.price} x ${item.qty} 
-        <button class="small-btn" onclick="incCart(${i})">+</button>
-        <button class="small-btn" onclick="decCart(${i})">-</button>
-        <button class="small-btn" onclick="rmCart(${i})">Remove</button>`;
-      cDiv.appendChild(row);
-    });
-    document.getElementById('cart-total').innerText='KSh '+total;
-  }
+    let cart=[];
+    function updateCart(){
+        const cDiv=document.getElementById('cart-items');cDiv.innerHTML='';
+        let total=0;
+        cart.forEach((item,i)=>{
+            total+=item.price*item.qty;
+            const row=document.createElement('div');row.className='cart-row';
+            row.innerHTML=`${item.name} - KSh ${item.price} x ${item.qty} 
+            <button class="small-btn" onclick="incCart(${i})">+</button>
+            <button class="small-btn" onclick="decCart(${i})">-</button>
+            <button class="small-btn" onclick="rmCart(${i})">Remove</button>`;
+            cDiv.appendChild(row);
+        });
+        document.getElementById('cart-total').innerText='KSh '+total;
+    }
 
-  window.addCart=(i)=>{const p=products[i];const c=cart.find(c=>c.name===p.name);if(c)c.qty++;else cart.push({name:p.name,price:p.price,qty:1});updateCart();}
-  window.incCart=(i)=>{cart[i].qty++;updateCart();}
-  window.decCart=(i)=>{cart[i].qty--;if(cart[i].qty<=0) cart.splice(i,1);updateCart();}
-  window.rmCart=(i)=>{cart.splice(i,1);updateCart();}
+    window.addCart=(i)=>{const p=products[i];const c=cart.find(c=>c.name===p.name);if(c)c.qty++;else cart.push({name:p.name,price:p.price,qty:1});updateCart();}
+    window.incCart=(i)=>{cart[i].qty++;updateCart();}
+    window.decCart=(i)=>{cart[i].qty--;if(cart[i].qty<=0)cart.splice(i,1);updateCart();}
+    window.rmCart=(i)=>{cart.splice(i,1);updateCart();}
+    document.getElementById('clear-cart').onclick=()=>{cart=[];updateCart();}
 
-  document.getElementById('clear-cart').onclick=()=>{cart=[];updateCart();}
-
-  document.getElementById('btn-checkout').onclick=()=>{
-    if(cart.length===0){alert('Cart is empty');return;}
-    let receipt='--- SmartBizz Receipt ---\n';
-    let total=0;
-    cart.forEach(i=>{receipt+=`${i.name} x ${i.qty} = KSh ${i.price*i.qty}\n`;total+=i.price*i.qty;});
-    receipt+=`Total: KSh ${total}\n--- Thank You ---`;
-    document.getElementById('receipt-print').style.display='block';
-    document.getElementById('receipt-print').innerText=receipt;
-    sales.push({user:user.username,items:cart,total,date:new Date()});
-    localStorage.setItem('sales',JSON.stringify(sales));
-    cart=[];updateCart();
-    window.print();
-  }
+    document.getElementById('btn-checkout').onclick=()=>{
+        if(cart.length===0){alert('Cart is empty');return;}
+        let receipt='--- SmartBizz Receipt ---\n';
+        let total=0;
+        cart.forEach(i=>{receipt+=`${i.name} x ${i.qty} = KSh ${i.price*i.qty}\n`;total+=i.price*i.qty;});
+        receipt+=`Total: KSh ${total}\n--- Thank You ---`;
+        document.getElementById('receipt-print').style.display='block';
+        document.getElementById('receipt-print').innerText=receipt;
+        sales.push({user:user.username,items:cart,total,date:new Date()});
+        localStorage.setItem('sales',JSON.stringify(sales));
+        cart=[];updateCart();
+        window.print();
+    }
 }
 
 renderLogin();
