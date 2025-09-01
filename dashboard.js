@@ -199,3 +199,99 @@ window.deleteSale = function(index) {
 };
 
 
+
+// ========== SELLING PRODUCTS (Employee) ==========
+function loadSellItems() {
+  const select = document.getElementById("sellItem");
+  select.innerHTML = "";
+  stock.forEach(item => {
+    if (item.quantity > 0) {
+      select.innerHTML += `<option value="${item.name}">${item.name} (Available: ${item.quantity})</option>`;
+    }
+  });
+}
+loadSellItems();
+
+// Handle sale
+document.getElementById("sellForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const itemName = document.getElementById("sellItem").value;
+  const qty = parseInt(document.getElementById("sellQty").value);
+  const employee = localStorage.getItem("loggedInUser") || "Unknown";
+
+  const itemIndex = stock.findIndex(i => i.name === itemName);
+  if (itemIndex === -1) {
+    alert("Item not found in stock!");
+    return;
+  }
+
+  if (qty <= 0 || qty > stock[itemIndex].quantity) {
+    alert("Invalid quantity!");
+    return;
+  }
+
+  // Deduct from stock
+  stock[itemIndex].quantity -= qty;
+
+  // Record sale
+  const sale = {
+    product: itemName,
+    price: stock[itemIndex].price * qty,
+    employee: employee,
+    date: new Date().toLocaleString()
+  };
+  sales.push(sale);
+
+  // Save
+  localStorage.setItem("stock", JSON.stringify(stock));
+  localStorage.setItem("sales", JSON.stringify(sales));
+
+  // Refresh
+  renderStock();
+  renderSales();
+  loadSellItems();
+
+  this.reset();
+  alert(`✅ ${qty} ${itemName}(s) sold by ${employee}!`);
+});
+
+
+// ===== DASHBOARD OVERVIEW =====
+function updateOverview() {
+  // Total stock value
+  let stockValue = stock.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // Today's sales
+  const today = new Date().toDateString();
+  let todaySales = sales
+    .filter(s => new Date(s.date).toDateString() === today)
+    .reduce((sum, s) => sum + s.price, 0);
+
+  // Top-selling item
+  let productCount = {};
+  sales.forEach(s => {
+    productCount[s.product] = (productCount[s.product] || 0) + 1;
+  });
+  let topItem = Object.keys(productCount).length
+    ? Object.keys(productCount).reduce((a, b) => productCount[a] > productCount[b] ? a : b)
+    : "N/A";
+
+  // Employees logged in (track via localStorage)
+  let employees = JSON.parse(localStorage.getItem("employees")) || [];
+  let loggedCount = employees.filter(e => e.loggedIn).length;
+
+  // Display
+  document.getElementById("stockValue").textContent = "KES " + stockValue.toFixed(2);
+  document.getElementById("salesToday").textContent = "KES " + todaySales.toFixed(2);
+  document.getElementById("topItem").textContent = topItem;
+  document.getElementById("loggedEmployees").textContent = loggedCount;
+}
+
+// Run overview after every update
+function refreshAll() {
+  renderStock();
+  renderSales();
+  loadSellItems();
+  updateOverview();
+}
+refreshAll();
