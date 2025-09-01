@@ -1,146 +1,459 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SmartBizz App — POS</title>
-  <style>
-    :root{--brand:#3d5ed4;--bg:#f6f8ff;--muted:#666;--card:#fff;--glass: rgba(255,255,255,0.7)}
-    *{box-sizing:border-box}
-    body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;background:linear-gradient(180deg,var(--bg),#ffffff);color:#111}
-    header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-    header .brand{display:flex;gap:12px;align-items:center;font-weight:700}
-    .logo{width:42px;height:42px;border-radius:50%;display:inline-grid;place-items:center;background:#fff;color:var(--brand);font-weight:800}
-    .container{padding:18px;max-width:1200px;margin:18px auto}
-    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
-    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(30,30,60,0.06)}
-    .small{font-size:13px;color:var(--muted)}
-    /* Login */
-    .center{display:grid;place-items:center;height:calc(100vh - 72px)}
-    .login-card{width:420px;padding:22px;text-align:center}
-    .field{display:flex;flex-direction:column;margin-bottom:12px;text-align:left}
-    input,select,textarea{padding:10px;border-radius:8px;border:1px solid #e6e8f0}
-    button{background:var(--brand);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
-    .muted{color:var(--muted)}
-    /* Small buttons */
-    .small-btn{
-      padding:6px 10px;
-      border-radius:6px;
-      border:1px solid var(--brand);
-      background:var(--brand);
-      color:#fff;
-      font-size:13px;
-      cursor:pointer;
-    }
-    .small-btn:hover{
-      background:#2d46a3;
-    }
-    /* POS layout */
-    .topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
-    .search{display:flex;gap:8px}
-    .product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:520px;overflow:auto;padding:6px}
-    .product{background:var(--glass);padding:8px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
-    .product .name{font-weight:600;font-size:14px}
-    .cart{display:flex;flex-direction:column;gap:8px}
-    .cart-items{max-height:420px;overflow:auto}
-    .cart-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#fbfbff}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
-    .report-filters{display:flex;gap:8px;flex-wrap:wrap}
-    .footer-note{font-size:13px;color:var(--muted);margin-top:8px}
-    /* receipt print */
-    #receipt-print{display:block;padding:14px;max-width:340px;margin:14px auto;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-    @media print{
-      body *{visibility:hidden}
-      #receipt-print, #receipt-print *{visibility:visible}
-      #receipt-print{position:fixed;left:0;top:0;width:100%}
-    }
-    /* responsive */
-    @media (max-width:960px){.grid{grid-template-columns:1fr}.product-list{max-height:320px}}
-    /* login profile SB */
-    .login-profile{
-      width:80px;height:80px;margin:0 auto 16px;
-      border-radius:50%;
-      background:var(--brand);
-      color:#fff;
-      display:grid;
-      place-items:center;
-      font-weight:800;
-      font-size:28px;
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SmartBizz App — POS</title>
+<style>
+:root{--brand:#3d5ed4;--bg:#f6f8ff;--muted:#666;--card:#fff;--glass: rgba(255,255,255,0.7)}
+*{box-sizing:border-box}
+body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;background:linear-gradient(180deg,var(--bg),#ffffff);color:#111}
+header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+header .brand{display:flex;gap:12px;align-items:center;font-weight:700}
+.logo{width:42px;height:42px;border-radius:50%;display:inline-grid;place-items:center;background:#fff;color:var(--brand);font-weight:800}
+.container{padding:18px;max-width:1200px;margin:18px auto}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+.card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(30,30,60,0.06)}
+.small{font-size:13px;color:var(--muted)}
+.center{display:grid;place-items:center;height:calc(100vh - 72px)}
+.login-card{width:420px;padding:22px;text-align:center}
+.field{display:flex;flex-direction:column;margin-bottom:12px}
+input,select,textarea{padding:10px;border-radius:8px;border:1px solid #e6e8f0}
+button{background:var(--brand);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+.muted{color:var(--muted)}
+.small-btn{padding:6px 10px;border-radius:6px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-size:13px;cursor:pointer;}
+.small-btn:hover{background:#2d46a3;}
+.topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+.search{display:flex;gap:8px}
+.product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:520px;overflow:auto;padding:6px}
+.product{background:var(--glass);padding:8px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.product .name{font-weight:600;font-size:14px}
+.cart{display:flex;flex-direction:column;gap:8px}
+.cart-items{max-height:420px;overflow:auto}
+.cart-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#fbfbff}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+.report-filters{display:flex;gap:8px;flex-wrap:wrap}
+.footer-note{font-size:13px;color:var(--muted);margin-top:8px}
+#receipt-print{display:block;padding:14px;max-width:340px;margin:14px auto;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+@media print{body *{visibility:hidden}#receipt-print, #receipt-print *{visibility:visible}#receipt-print{position:fixed;left:0;top:0;width:100%}}
+@media (max-width:960px){.grid{grid-template-columns:1fr}.product-list{max-height:320px}}
+</style>
 </head>
 <body>
-  <header>
-    <div class="brand"><div class="logo">SB</div><div>SmartBizz App</div></div>
-    <div class="small">Point of Sale — Developed by Brian &lt;brianmurayandungu@gmail.com&gt;</div>
-  </header>
+<header>
+<div class="brand"><div class="logo">SB</div><div>SmartBizz App</div></div>
+<div class="small">Point of Sale — Developed by Brian &lt;brianmurayandungu@gmail.com&gt;</div>
+</header>
 
-  <div id="app"></div>
+<div id="app"></div>
 
-  <!-- login template -->
-  <template id="login-template">
-    <div class="center">
-      <div class="card login-card">
-        <div class="login-profile">SB</div>
-        <h2>SmartBizz — Login</h2>
-        <div class="small muted">Choose role and sign in</div>
-        <div class="field"><label>Role</label>
-          <select id="role-select"><option value="admin">Admin</option><option value="staff">Staff (Cashier)</option></select>
-        </div>
-        <div class="field"><label>Username</label><input id="username" placeholder="username" /></div>
-        <div class="field"><label>Password</label><input id="password" type="password" placeholder="password" /></div>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-          <button id="login-btn">Sign in</button>
-        </div>
+<template id="login-template">
+<div class="center">
+  <div class="card login-card">
+    <div class="logo" style="width:60px;height:60px;margin:0 auto;font-size:24px">SB</div>
+    <h2>SmartBizz — Login</h2>
+    <div class="small muted">Choose role and sign in</div>
+    <div class="field"><label>Role</label>
+      <select id="role-select"><option value="admin">Admin</option><option value="staff">Staff (Cashier)</option></select>
+    </div>
+    <div class="field"><label>Username</label><input id="username" placeholder="username" /></div>
+    <div class="field"><label>Password</label><input id="password" type="password" placeholder="password" /></div>
+    <button id="login-btn">Sign in</button>
+  </div>
+</div>
+</template>
+
+<template id="admin-template">
+<div class="container">
+<div class="topbar">
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="logo" style="width:46px;height:46px">SB</div>
+    <div>
+      <div style="font-weight:700">Admin Dashboard</div>
+      <div class="small muted" id="admin-email"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="btn-export" class="small-btn">Export Data</button>
+    <button id="btn-import" class="small-btn">Import Data</button>
+    <button id="btn-logout" class="small-btn">Logout</button>
+  </div>
+</div>
+
+<div class="grid">
+<div>
+  <div class="card">
+    <h3>Overview</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Total Sales</div><div id="total-sales">KSh 0</div></div>
+      <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Stock Items</div><div id="stock-count">0</div></div>
+      <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Today Sales</div><div id="today-sales">KSh 0</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Stock Management</h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="prod-name" placeholder="Product name" />
+      <input id="prod-price" placeholder="Price" type="number" />
+      <input id="prod-qty" placeholder="Qty" type="number" />
+      <button id="add-prod" class="small-btn">Add Product</button>
+    </div>
+    <div id="products-table"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Employees</h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="emp-user" placeholder="username" />
+      <input id="emp-pass" placeholder="password" />
+      <select id="emp-role"><option value="staff">Staff</option><option value="manager">Manager</option></select>
+      <button id="add-emp" class="small-btn">Create Employee</button>
+    </div>
+    <div id="emp-table"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Expenses</h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="exp-desc" placeholder="Expense description" />
+      <input id="exp-amt" placeholder="Amount" type="number" />
+      <button id="add-exp" class="small-btn">Add Expense</button>
+    </div>
+    <div id="expenses-list"></div>
+  </div>
+</div>
+
+<div>
+  <div class="card">
+    <h3>Sales Reports</h3>
+    <div class="report-filters">
+      <input type="date" id="filter-from" />
+      <input type="date" id="filter-to" />
+      <select id="filter-staff"><option value="">All staff</option></select>
+      <input id="filter-product" placeholder="Product name" />
+      <button id="apply-filter" class="small-btn">Apply Filter</button>
+      <button id="print-report" class="small-btn">Print Report</button>
+    </div>
+    <div id="report-table" style="margin-top:12px;max-height:420px;overflow:auto"></div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3>Void / Canceled Receipts</h3>
+    <div id="void-list"></div>
+  </div>
+</div>
+</div>
+</div>
+</template>
+
+<template id="staff-template">
+<div class="container">
+<div class="topbar">
+  <div style="display:flex;gap:12px;align-items:center">
+    <div class="logo" style="width:46px;height:46px">SB</div>
+    <div>
+      <div style="font-weight:700">Sales — Cashier</div>
+      <div class="small muted" id="staff-email"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="btn-sales-history" class="small-btn">My Sales</button>
+    <button id="btn-logout2" class="small-btn">Logout</button>
+  </div>
+</div>
+
+<div class="grid">
+<div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <input id="search-prod" placeholder="Search product by name" style="width:420px;padding:10px;border-radius:8px;border:1px solid #e6e8f0" />
+      </div>
+      <div>
+        <button id="clear-cart" class="small-btn">Clear Cart</button>
       </div>
     </div>
-  </template>
+    <div class="product-list" id="staff-products"></div>
+  </div>
+</div>
 
-  <!-- admin and staff templates remain unchanged -->
+<div>
+  <div class="card cart">
+    <h3>Cart</h3>
+    <div class="cart-items" id="cart-items"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <div>Total: <span id="cart-total">KSh 0</span></div>
+      <button id="btn-checkout" class="small-btn">Checkout</button>
+    </div>
+  </div>
 
-  <script>
-    // =======================
-    // Data / LocalStorage
-    // =======================
-    let users = JSON.parse(localStorage.getItem('users')) || [
-      {username:'admin',password:'admin1234',role:'admin'},
-      {username:'staff',password:'1234',role:'staff'}
-    ];
-    let products = JSON.parse(localStorage.getItem('products')) || [];
-    let employees = JSON.parse(localStorage.getItem('employees')) || [];
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-    let sales = JSON.parse(localStorage.getItem('sales')) || [];
-    let voids = JSON.parse(localStorage.getItem('voids')) || [];
+  <div class="card" id="receipt-print" style="display:none"></div>
+</div>
+</div>
+</div>
+</template>
 
-    // =======================
-    // App render
-    // =======================
-    const app = document.getElementById('app');
+<script>
+// ===================== DATA =====================
+let users = JSON.parse(localStorage.getItem('users')) || [
+  {username:'admin',password:'admin1234',role:'admin'},
+  {username:'staff',password:'1234',role:'staff'}
+];
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let employees = JSON.parse(localStorage.getItem('employees')) || [];
+let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+let sales = JSON.parse(localStorage.getItem('sales')) || [];
+let voids = JSON.parse(localStorage.getItem('voids')) || [];
 
-    function renderLogin(){
-      app.innerHTML = '';
-      const tpl = document.getElementById('login-template').content.cloneNode(true);
-      app.appendChild(tpl);
-      document.getElementById('login-btn').onclick = login;
+// ===================== APP =====================
+const app=document.getElementById('app');
+
+function renderLogin(){
+  app.innerHTML='';
+  const tpl=document.getElementById('login-template').content.cloneNode(true);
+  app.appendChild(tpl);
+  document.getElementById('login-btn').onclick=login;
+}
+
+function login(){
+  const role=document.getElementById('role-select').value;
+  const username=document.getElementById('username').value;
+  const password=document.getElementById('password').value;
+  const user=users.find(u=>u.username===username && u.password===password && u.role===role);
+  if(user){
+    localStorage.setItem('currentUser',JSON.stringify(user));
+    role==='admin'?renderAdmin():renderStaff();
+  } else alert('Invalid credentials');
+}
+
+function logout(){localStorage.removeItem('currentUser');renderLogin();}
+
+// ===================== ADMIN =====================
+function renderAdmin(){
+  app.innerHTML='';
+  const tpl=document.getElementById('admin-template').content.cloneNode(true);
+  app.appendChild(tpl);
+  const user=JSON.parse(localStorage.getItem('currentUser'));
+  document.getElementById('admin-email').innerText=user.username;
+  document.getElementById('btn-logout').onclick=logout;
+
+  // ===== PRODUCTS =====
+  function renderProducts(filteredProducts = products){
+    const table=document.createElement('table');
+    table.innerHTML='<tr><th>Name</th><th>Price</th><th>Qty</th><th>Actions</th></tr>';
+    filteredProducts.forEach((p,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${p.name}</td><td>${p.price}</td><td>${p.qty}</td>
+        <td><button class="small-btn" onclick="editProduct(${i})">Edit</button>
+        <button class="small-btn" onclick="deleteProduct(${i})">Delete</button></td>`;
+      if(p.qty <=5) tr.style.background='#ffe5e5';
+      table.appendChild(tr);
+    });
+    document.getElementById('products-table').innerHTML='';document.getElementById('products-table').appendChild(table);
+  }
+  renderProducts();
+
+  document.getElementById('add-prod').onclick=()=>{
+    const name=document.getElementById('prod-name').value;
+    const price=Number(document.getElementById('prod-price').value);
+    const qty=Number(document.getElementById('prod-qty').value);
+    if(name && !isNaN(price) && !isNaN(qty)){
+      products.push({name,price,qty});
+      localStorage.setItem('products',JSON.stringify(products));
+      renderProducts();
+    } else alert('Fill all product fields correctly');
+  }
+
+  window.editProduct=(i)=>{
+    const p=products[i];
+    const newName=prompt('Product name',p.name);
+    const newPrice=Number(prompt('Price',p.price));
+    const newQty=Number(prompt('Qty',p.qty));
+    if(newName && !isNaN(newPrice) && !isNaN(newQty)){
+      products[i]={name:newName,price:newPrice,qty:newQty};
+      localStorage.setItem('products',JSON.stringify(products));
+      renderProducts();
     }
+  }
 
-    function login(){
-      const role = document.getElementById('role-select').value;
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const user = users.find(u=>u.username===username && u.password===password && u.role===role);
-      if(user){
-        localStorage.setItem('currentUser',JSON.stringify(user));
-        if(role==='admin') renderAdmin();
-        else renderStaff();
-      } else alert('Invalid credentials');
-    }
+  window.deleteProduct=(i)=>{if(confirm('Delete this product?')){products.splice(i,1);localStorage.setItem('products',JSON.stringify(products));renderProducts();}}
 
-    function logout(){localStorage.removeItem('currentUser');renderLogin();}
+  // ===== EMPLOYEES =====
+  function renderEmployees(){
+    const table=document.createElement('table');
+    table.innerHTML='<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
+    employees.forEach((e,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${e.username}</td><td>${e.role}</td>
+        <td><button class="small-btn" onclick="deleteEmp(${i})">Delete</button></td>`;
+      table.appendChild(tr);
+    });
+    document.getElementById('emp-table').innerHTML='';document.getElementById('emp-table').appendChild(table);
+  }
+  renderEmployees();
+  document.getElementById('add-emp').onclick=()=>{
+    const username=document.getElementById('emp-user').value;
+    const password=document.getElementById('emp-pass').value;
+    const role=document.getElementById('emp-role').value;
+    if(username && password){employees.push({username,password,role});localStorage.setItem('employees',JSON.stringify(employees));renderEmployees();}
+    else alert('Fill all employee fields');
+  }
+  window.deleteEmp=(i)=>{if(confirm('Delete employee?')){employees.splice(i,1);localStorage.setItem('employees',JSON.stringify(employees));renderEmployees();}}
 
-    // Admin and Staff render functions remain unchanged
-    renderLogin();
-  </script>
+  // ===== EXPENSES =====
+  function renderExpenses(){
+    const list=document.createElement('ul');
+    expenses.forEach((e,i)=>{
+      const li=document.createElement('li');
+      li.innerHTML=`${e.desc} - KSh ${e.amt} <button class="small-btn" onclick="deleteExp(${i})">Delete</button>`;
+      list.appendChild(li);
+    });
+    document.getElementById('expenses-list').innerHTML='';document.getElementById('expenses-list').appendChild(list);
+  }
+  renderExpenses();
+  document.getElementById('add-exp').onclick=()=>{
+    const desc=document.getElementById('exp-desc').value;
+    const amt=Number(document.getElementById('exp-amt').value);
+    if(desc && !isNaN(amt)){expenses.push({desc,amt});localStorage.setItem('expenses',JSON.stringify(expenses));renderExpenses();}
+    else alert('Fill expense correctly');
+  }
+  window.deleteExp=(i)=>{expenses.splice(i,1);localStorage.setItem('expenses',JSON.stringify(expenses));renderExpenses();}
+
+  // ===== SALES REPORTS =====
+  const filterFrom=document.getElementById('filter-from');
+  const filterTo=document.getElementById('filter-to');
+  const filterStaff=document.getElementById('filter-staff');
+  const filterProduct=document.getElementById('filter-product');
+  const reportTable=document.getElementById('report-table');
+
+  function populateStaffFilter(){
+    filterStaff.innerHTML='<option value="">All staff</option>';
+    employees.forEach(e=>{filterStaff.innerHTML+=`<option value="${e.username}">${e.username}</option>`;});
+  }
+  populateStaffFilter();
+
+  function renderSalesReport(filteredSales=sales){
+    reportTable.innerHTML='';
+    const table=document.createElement('table');
+    table.innerHTML='<tr><th>Staff</th><th>Items</th><th>Total</th><th>Date</th><th>Actions</th></tr>';
+    filteredSales.forEach((s,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${s.user}</td><td>${s.items.map(it=>`${it.name} x${it.qty}`).join(', ')}</td>
+      <td>KSh ${s.total}</td><td>${new Date(s.date).toLocaleString()}</td>
+      <td><button class="small-btn" onclick="deleteSale(${i})">Delete</button></td>`;
+      table.appendChild(tr);
+    });
+    reportTable.appendChild(table);
+  }
+  renderSalesReport();
+
+  window.deleteSale=(i)=>{if(confirm('Delete this sale?')){sales.splice(i,1);localStorage.setItem('sales',JSON.stringify(sales));renderSalesReport();}}
+
+  document.getElementById('apply-filter').onclick=()=>{
+    let filtered=sales;
+    if(filterFrom.value) filtered=filtered.filter(s=>new Date(s.date)>=new Date(filterFrom.value));
+    if(filterTo.value) filtered=filtered.filter(s=>new Date(s.date)<=new Date(filterTo.value));
+    if(filterStaff.value) filtered=filtered.filter(s=>s.user===filterStaff.value);
+    if(filterProduct.value) filtered=filtered.filter(s=>s.items.some(it=>it.name.toLowerCase().includes(filterProduct.value.toLowerCase())));
+    renderSalesReport(filtered);
+  }
+
+  document.getElementById('print-report').onclick=()=>{
+    let printContent = reportTable.innerHTML;
+    let newWin=window.open('','Print','height=600,width=800');
+    newWin.document.write('<html><head><title>Sales Report</title></head><body>');
+    newWin.document.write(printContent);
+    newWin.document.write('</body></html>');
+    newWin.document.close();
+    newWin.print();
+  }
+
+  // Export data to CSV
+  document.getElementById('btn-export').onclick=()=>{
+    const choice = prompt('Export: products, employees, expenses, sales?').toLowerCase();
+    let data;
+    if(choice==='products') data=products;
+    else if(choice==='employees') data=employees;
+    else if(choice==='expenses') data=expenses;
+    else if(choice==='sales') data=sales;
+    else{alert('Invalid choice');return;}
+    const csvContent='data:text/csv;charset=utf-8,'+data.map(e=>Object.values(e).join(',')).join('\n');
+    const encodedUri=encodeURI(csvContent);
+    const link=document.createElement('a');
+    link.setAttribute('href',encodedUri);
+    link.setAttribute('download',choice+'.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+// ===================== STAFF =====================
+function renderStaff(){
+  app.innerHTML='';
+  const tpl=document.getElementById('staff-template').content.cloneNode(true);
+  app.appendChild(tpl);
+  const user=JSON.parse(localStorage.getItem('currentUser'));
+  document.getElementById('staff-email').innerText=user.username;
+  document.getElementById('btn-logout2').onclick=logout;
+
+  const prodContainer=document.getElementById('staff-products');
+  function renderProdList(filteredProducts=products){
+    prodContainer.innerHTML='';
+    filteredProducts.forEach((p,i)=>{
+      const div=document.createElement('div');div.className='product';
+      div.innerHTML=`<div class="name">${p.name}</div><div>KSh ${p.price}</div><div>Stock: ${p.qty}</div>
+      <div style="display:flex;gap:6px"><button class="small-btn" onclick="addCart(${i})">Add</button></div>`;
+      prodContainer.appendChild(div);
+    });
+  }
+  renderProdList();
+
+  document.getElementById('search-prod').oninput=(e)=>{
+    const term=e.target.value.toLowerCase();
+    renderProdList(products.filter(p=>p.name.toLowerCase().includes(term)));
+  }
+
+  let cart=[];
+  function updateCart(){
+    const cDiv=document.getElementById('cart-items');cDiv.innerHTML='';
+    let total=0;
+    cart.forEach((item,i)=>{
+      total+=item.price*item.qty;
+      const row=document.createElement('div');row.className='cart-row';
+      row.innerHTML=`${item.name} - KSh ${item.price} x ${item.qty}
+        <button class="small-btn" onclick="incCart(${i})">+</button>
+        <button class="small-btn" onclick="decCart(${i})">-</button>
+        <button class="small-btn" onclick="rmCart(${i})">Remove</button>`;
+      cDiv.appendChild(row);
+    });
+    document.getElementById('cart-total').innerText='KSh '+total;
+  }
+
+  window.addCart=(i)=>{const p=products[i];const c=cart.find(c=>c.name===p.name);if(c)c.qty++;else cart.push({name:p.name,price:p.price,qty:1});updateCart();}
+  window.incCart=(i)=>{cart[i].qty++;updateCart();}
+  window.decCart=(i)=>{cart[i].qty--;if(cart[i].qty<=0) cart.splice(i,1);updateCart();}
+  window.rmCart=(i)=>{cart.splice(i,1);updateCart();}
+  document.getElementById('clear-cart').onclick=()=>{cart=[];updateCart();}
+
+  document.getElementById('btn-checkout').onclick=()=>{
+    if(cart.length===0){alert('Cart is empty');return;}
+    let receipt='--- SmartBizz Receipt ---\n';
+    let total=0;
+    cart.forEach(i=>{receipt+=`${i.name} x${i.qty} = KSh ${i.price*i.qty}\n`;total+=i.price*i.qty;});
+    receipt+=`Total: KSh ${total}\n--- Thank You ---`;
+    document.getElementById('receipt-print').style.display='block';
+    document.getElementById('receipt-print').innerText=receipt;
+    sales.push({user:user.username,items:cart,total,date:new Date()});
+    localStorage.setItem('sales',JSON.stringify(sales));
+    cart=[];updateCart();
+    window.print();
+  }
+}
+
+renderLogin();
+</script>
 </body>
 </html>
