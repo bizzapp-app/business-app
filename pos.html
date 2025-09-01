@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Terminal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2>POS Terminal</h2>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h3>Products</h3>
+      <ul id="productList"></ul>
+    </div>
+
+    <div class="card">
+      <h3>Cart</h3>
+      <ul id="cartList"></ul>
+      <p>Total: <span id="cartTotal">0</span></p>
+      <button onclick="checkout()">Checkout</button>
+    </div>
+
+    <div class="card">
+      <h3>Receipt</h3>
+      <div id="receipt"></div>
+      <button onclick="printReceipt()">Print Receipt</button>
+    </div>
+  </div>
+
+  <script src="pos.js"></script>
+</body>
+</html>

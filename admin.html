@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="navbar">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h3>Stock Management</h3>
+      <input type="text" id="itemName" placeholder="Item Name">
+      <input type="number" id="itemPrice" placeholder="Price">
+      <input type="number" id="itemStock" placeholder="Stock">
+      <button onclick="addStock()">Add Item</button>
+      <ul id="stockList"></ul>
+    </div>
+
+    <div class="card">
+      <h3>Employees</h3>
+      <input type="text" id="empName" placeholder="Employee Name">
+      <input type="text" id="empUser" placeholder="Username">
+      <input type="password" id="empPass" placeholder="Password">
+      <button onclick="addEmployee()">Add Employee</button>
+      <ul id="employeeList"></ul>
+    </div>
+
+    <div class="card">
+      <h3>Sales Summary</h3>
+      <div id="salesSummary"></div>
+    </div>
+
+    <div class="card">
+      <h3>Expenses</h3>
+      <input type="text" id="expenseName" placeholder="Expense">
+      <input type="number" id="expenseAmount" placeholder="Amount">
+      <button onclick="addExpense()">Add Expense</button>
+      <ul id="expenseList"></ul>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
