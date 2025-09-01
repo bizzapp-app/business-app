@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <main>
+    <section>
+      <h2>Stock Management</h2>
+      <form id="stockForm">
+        <input type="text" id="itemName" placeholder="Item Name" required>
+        <input type="number" id="itemPrice" placeholder="Price" required>
+        <input type="number" id="itemQty" placeholder="Quantity" required>
+        <button type="submit">Add Stock</button>
+      </form>
+      <div id="stockList"></div>
+    </section>
+
+    <section>
+      <h2>Sales Summary</h2>
+      <div id="salesSummary"></div>
+    </section>
+
+    <section>
+      <h2>Receipts</h2>
+      <div id="receiptList"></div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
