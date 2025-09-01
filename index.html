@@ -1,476 +1,163 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SmartBizz App — POS</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartBizz App</title>
   <style>
-    :root{--brand:#3d5ed4;--bg:#f6f8ff;--muted:#666;--card:#fff;--glass: rgba(255,255,255,0.7)}
-    *{box-sizing:border-box}
-    body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;background:linear-gradient(180deg,var(--bg),#ffffff);color:#111}
-    header{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-    header .brand{display:flex;gap:12px;align-items:center;font-weight:700}
-    .logo{width:42px;height:42px;border-radius:50%;display:inline-grid;place-items:center;background:#fff;color:var(--brand);font-weight:800}
-    .container{padding:18px;max-width:1200px;margin:18px auto}
-    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
-    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(30,30,60,0.06)}
-    .small{font-size:13px;color:var(--muted)}
-    /* Login */
-    .center{display:grid;place-items:center;height:calc(100vh - 72px)}
-    .login-card{width:420px;padding:22px}
-    .field{display:flex;flex-direction:column;margin-bottom:12px}
-    input,select,textarea{padding:10px;border-radius:8px;border:1px solid #e6e8f0}
-    button{background:var(--brand);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
-    .muted{color:var(--muted)}
-    /* POS layout */
-    .topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
-    .search{display:flex;gap:8px}
-    .product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:520px;overflow:auto;padding:6px}
-    .product{background:var(--glass);padding:8px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
-    .product .name{font-weight:600;font-size:14px}
-    .cart{display:flex;flex-direction:column;gap:8px}
-    .cart-items{max-height:420px;overflow:auto}
-    .cart-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#fbfbff}
-    .small-btn{padding:6px 8px;border-radius:6px;border:1px solid rgba(0,0,0,0.06);background:#fff;cursor:pointer}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
-    .report-filters{display:flex;gap:8px;flex-wrap:wrap}
-    .footer-note{font-size:13px;color:var(--muted);margin-top:8px}
-    /* receipt print */
-    @media print{
-      body *{visibility:hidden}
-      #receipt-print, #receipt-print *{visibility:visible}
-      #receipt-print{position:fixed;left:0;top:0;width:100%}
-    }
-    /* responsive */
-    @media (max-width:960px){.grid{grid-template-columns:1fr}.product-list{max-height:320px}}
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f9; }
+    header { background: #3d5ed4; color: #fff; padding: 1rem; text-align: center; }
+    .container { padding: 1rem; }
+    .hidden { display: none; }
+    .btn { background: #3d5ed4; color: #fff; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; margin: 0.2rem; }
+    .btn:hover { background: #2c46a3; }
+    .dashboard { margin-top: 1rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 0.5rem; text-align: left; }
+    #receiptContent { background: #fff; padding: 1rem; border: 2px solid #3d5ed4; margin-top: 1rem; }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand"><div class="logo">SB</div><div>SmartBizz App</div></div>
-    <div class="small">Point of Sale — Developed by Brian &lt;brianmurayandungu@gmail.com&gt;</div>
+    <h1>SmartBizz POS</h1>
   </header>
 
-  <div id="app"></div>
-
-  <template id="login-template">
-    <div class="center">
-      <div class="card login-card">
-        <h2>SmartBizz — Login</h2>
-        <div class="small muted">Choose role and sign in</div>
-        <div class="field"><label>Role</label>
-          <select id="role-select"><option value="admin">Admin</option><option value="staff">Staff (Cashier)</option></select>
-        </div>
-        <div class="field"><label>Username</label><input id="username" placeholder="username" /></div>
-        <div class="field"><label>Password</label><input id="password" type="password" placeholder="password" /></div>
-        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
-          <button id="login-btn">Sign in</button>
-          <div class="small muted">Demo admin: <b>admin</b> / <b>admin123</b><br/>Demo staff: <b>cashier</b> / <b>cash123</b></div>
-        </div>
-        <hr style="margin:12px 0"/>
-        <div class="small muted">Or use the Quick Demo buttons:</div>
-        <div style="display:flex;gap:8px;margin-top:8px"><button id="demo-admin">Demo Admin</button><button id="demo-staff">Demo Cashier</button></div>
-      </div>
+  <div class="container">
+    <!-- Login Section -->
+    <div id="loginSection">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username" /> <br><br>
+      <input type="password" id="password" placeholder="Password" /> <br><br>
+      <button class="btn" onclick="login()">Login</button>
     </div>
-  </template>
 
-  <template id="admin-template">
-    <div class="container">
-      <div class="topbar">
-        <div style="display:flex;gap:12px;align-items:center">
-          <div class="logo" style="width:46px;height:46px">SB</div>
-          <div>
-            <div style="font-weight:700">Admin Dashboard</div>
-            <div class="small muted" id="admin-email"></div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="btn-export" class="small-btn">Export Data</button>
-          <button id="btn-import" class="small-btn">Import Data</button>
-          <button id="btn-logout" class="small-btn">Logout</button>
-        </div>
-      </div>
-
-      <div class="grid">
-        <div>
-          <div class="card">
-            <h3>Overview</h3>
-            <div style="display:flex;gap:12px;flex-wrap:wrap">
-              <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Total Sales</div><div id="total-sales">KSh 0</div></div>
-              <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Stock Items</div><div id="stock-count">0</div></div>
-              <div class="card" style="padding:10px;min-width:140px"><div class="small muted">Today Sales</div><div id="today-sales">KSh 0</div></div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:12px">
-            <h3>Stock Management</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input id="prod-name" placeholder="Product name" />
-              <input id="prod-price" placeholder="Price" type="number" />
-              <input id="prod-qty" placeholder="Qty" type="number" />
-              <button id="add-prod">Add</button>
-            </div>
-            <div id="products-table"></div>
-          </div>
-
-          <div class="card" style="margin-top:12px">
-            <h3>Employees</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input id="emp-user" placeholder="username" />
-              <input id="emp-pass" placeholder="password" />
-              <select id="emp-role"><option value="staff">Staff</option><option value="manager">Manager</option></select>
-              <button id="add-emp">Create</button>
-            </div>
-            <div id="emp-table"></div>
-          </div>
-
-          <div class="card" style="margin-top:12px">
-            <h3>Expenses</h3>
-            <div style="display:flex;gap:8px;margin-bottom:8px">
-              <input id="exp-desc" placeholder="Expense description" />
-              <input id="exp-amt" placeholder="Amount" type="number" />
-              <button id="add-exp">Add Expense</button>
-            </div>
-            <div id="expenses-list"></div>
-          </div>
-
-        </div>
-
-        <div>
-          <div class="card">
-            <h3>Sales Reports</h3>
-            <div class="report-filters">
-              <input type="date" id="filter-from" />
-              <input type="date" id="filter-to" />
-              <select id="filter-staff"><option value="">All staff</option></select>
-              <input id="filter-product" placeholder="Product name" />
-              <button id="apply-filter">Apply</button>
-              <button id="print-report">Print Report</button>
-            </div>
-            <div id="report-table" style="margin-top:12px;max-height:420px;overflow:auto"></div>
-          </div>
-
-          <div class="card" style="margin-top:12px">
-            <h3>Void / Canceled Receipts</h3>
-            <div id="void-list"></div>
-          </div>
-
-        </div>
-      </div>
-
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden dashboard">
+      <h2>Admin Dashboard</h2>
+      <button class="btn" onclick="logout()">Logout</button>
+      <p>Welcome, Admin</p>
+      <!-- Placeholder for admin features -->
     </div>
-  </template>
 
-  <template id="staff-template">
-    <div class="container">
-      <div class="topbar">
-        <div style="display:flex;gap:12px;align-items:center">
-          <div class="logo" style="width:46px;height:46px">SB</div>
-          <div>
-            <div style="font-weight:700">Sales — Cashier</div>
-            <div class="small muted" id="staff-email"></div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button id="btn-sales-history" class="small-btn">My Sales</button>
-          <button id="btn-logout2" class="small-btn">Logout</button>
-        </div>
-      </div>
+    <!-- Staff Dashboard -->
+    <div id="staffDashboard" class="hidden dashboard">
+      <h2>Cashier Dashboard</h2>
+      <button class="btn" onclick="logout()">Logout</button>
+      <h3>Products</h3>
+      <table id="productTable">
+        <thead>
+          <tr><th>Product</th><th>Price</th><th>Action</th></tr>
+        </thead>
+        <tbody id="productList"></tbody>
+      </table>
 
-      <div class="grid">
-        <div>
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <input id="search-prod" placeholder="Search product by name" style="width:420px;padding:10px;border-radius:8px;border:1px solid #e6e8f0" />
-              </div>
-              <div>
-                <button id="clear-cart" class="small-btn">Clear Cart</button>
-              </div>
-            </div>
-            <div class="product-list" id="product-list"></div>
-          </div>
-        </div>
+      <h3>Cart</h3>
+      <table>
+        <thead><tr><th>Product</th><th>Price</th></tr></thead>
+        <tbody id="cartList"></tbody>
+      </table>
+      <p><b>Total: </b><span id="cartTotal">0</span></p>
+      <button class="btn" onclick="checkout()">Place Order</button>
 
-        <div>
-          <div class="card cart">
-            <h3>Cart</h3>
-            <div class="cart-items" id="cart-items"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-              <div>
-                <div class="small muted">Subtotal</div>
-                <div id="cart-sub">KSh 0</div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px">
-                <button id="checkout" style="min-width:140px">Checkout (Cash)</button>
-                <button id="print-quote" class="small-btn">Print Receipt</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:12px">
-            <h3>My Sales History</h3>
-            <div id="my-sales"></div>
-          </div>
-        </div>
-      </div>
-
+      <div id="receiptContent" class="hidden"></div>
+      <button id="printBtn" class="btn hidden" onclick="printReceipt()">Print Receipt</button>
     </div>
-  </template>
-
-  <!-- receipt print area -->
-  <div id="receipt-print" style="display:none;padding:14px;max-width:340px"></div>
+  </div>
 
   <script>
-    // --- Utilities & Data Layer (localStorage) ---
-    const DB = {
-      productsKey: 'sb_products',
-      usersKey: 'sb_users',
-      salesKey: 'sb_sales',
-      expensesKey: 'sb_expenses',
-      receiptKey: 'sb_receipt_counter'
-    }
-
-    function load(key, fallback){try{return JSON.parse(localStorage.getItem(key))||fallback}catch(e){return fallback}}
-    function save(key,val){localStorage.setItem(key,JSON.stringify(val))}
-
-    // initialize demo data if missing
-    function initDemo(){
-      if(!localStorage.getItem(DB.usersKey)){
-        const users = [
-          {id: 'u_admin', username:'admin', password:'admin123', role:'admin', email:'admin@smartbizz.local', name:'Admin'},
-          {id: 'u_cashier', username:'cashier', password:'cash123', role:'staff', email:'cashier@smartbizz.local', name:'Cashier 1'}
-        ]; save(DB.usersKey, users);
-      }
-      if(!localStorage.getItem(DB.productsKey)){
-        const products = [
-          {id:'p1',name:'Bottled Water',price:50,qty:120,category:'Drinks',supplier:'Local'},
-          {id:'p2',name:'Samosa',price:40,qty:80,category:'Snack',supplier:'Bakery'},
-          {id:'p3',name:'Bread Loaf',price:120,qty:40,category:'Bakery',supplier:'Bakery'},
-        ]; save(DB.productsKey, products);
-      }
-      if(!localStorage.getItem(DB.salesKey)) save(DB.salesKey, []);
-      if(!localStorage.getItem(DB.expensesKey)) save(DB.expensesKey, []);
-      if(!localStorage.getItem(DB.receiptKey)) localStorage.setItem(DB.receiptKey,'0');
-    }
-
-    initDemo();
-
-    // --- App State ---
-    let state = {user:null};
-    const root = document.getElementById('app');
-
-    // --- Routing / Render ---
-    function renderLogin(){
-      root.innerHTML = document.getElementById('login-template').innerHTML;
-      document.getElementById('demo-admin').onclick = ()=>{document.getElementById('role-select').value='admin';document.getElementById('username').value='admin';document.getElementById('password').value='admin123';document.getElementById('login-btn').click()}
-      document.getElementById('demo-staff').onclick = ()=>{document.getElementById('role-select').value='staff';document.getElementById('username').value='cashier';document.getElementById('password').value='cash123';document.getElementById('login-btn').click()}
-      document.getElementById('login-btn').onclick = loginAction;
-    }
-
-    function loginAction(){
-      const role = document.getElementById('role-select').value;
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const users = load(DB.usersKey,[]);
-      const u = users.find(x=>x.username===username && x.password===password && ((role==='admin' && x.role==='admin') || (role==='staff' && x.role!=='admin')));
-      if(u){state.user=u; if(u.role==='admin') renderAdmin(); else renderStaff();}
-      else alert('Invalid credentials for selected role');
-    }
-
-    // --- Admin ---
-    function renderAdmin(){
-      root.innerHTML = document.getElementById('admin-template').innerHTML;
-      document.getElementById('admin-email').innerText = state.user.email||state.user.username;
-      document.getElementById('btn-logout').onclick = ()=>{state.user=null;renderLogin()}
-      document.getElementById('btn-export').onclick = exportData;
-      document.getElementById('btn-import').onclick = importData;
-      // products
-      const prodName = document.getElementById('prod-name');
-      document.getElementById('add-prod').onclick = ()=>{
-        const name = prodName.value.trim(); const price=Number(document.getElementById('prod-price').value)||0; const qty = Number(document.getElementById('prod-qty').value)||0;
-        if(!name) return alert('Enter product name');
-        const products = load(DB.productsKey,[]); const id='p'+Date.now(); products.push({id,name,price,qty,category:'General',supplier:'Unknown'}); save(DB.productsKey,products); prodName.value=''; document.getElementById('prod-price').value='';document.getElementById('prod-qty').value=''; refreshAdmin();
-      }
-
-      document.getElementById('add-emp').onclick = ()=>{
-        const u = document.getElementById('emp-user').value.trim(); const p = document.getElementById('emp-pass').value.trim(); const role = document.getElementById('emp-role').value;
-        if(!u||!p) return alert('enter username/password');
-        const users = load(DB.usersKey,[]); if(users.find(x=>x.username===u)) return alert('username exists');
-        users.push({id:'u'+Date.now(),username:u,password:p,role:role,email:u+'@smartbizz.local',name:u}); save(DB.usersKey,users); document.getElementById('emp-user').value='';document.getElementById('emp-pass').value=''; refreshAdmin();
-      }
-
-      document.getElementById('add-exp').onclick = ()=>{
-        const desc = document.getElementById('exp-desc').value.trim(); const amt = Number(document.getElementById('exp-amt').value)||0; if(!desc||!amt) return alert('desc and amount required');
-        const ex = load(DB.expensesKey,[]); ex.push({id:'ex'+Date.now(),desc,amt,by:state.user.username,date:new Date().toISOString()}); save(DB.expensesKey,ex); document.getElementById('exp-desc').value='';document.getElementById('exp-amt').value=''; refreshAdmin();
-      }
-
-      document.getElementById('apply-filter').onclick = renderReport;
-      document.getElementById('print-report').onclick = ()=>{window.print()}
-
-      refreshAdmin();
-    }
-
-    function refreshAdmin(){
-      const products = load(DB.productsKey,[]);
-      const users = load(DB.usersKey,[]);
-      const sales = load(DB.salesKey,[]);
-      const expenses = load(DB.expensesKey,[]);
-      // Overview
-      const total = sales.filter(s=>!s.void).reduce((a,b)=>a + b.total,0);
-      document.getElementById('total-sales').innerText = `KSh ${total.toFixed(2)}`;
-      const stockCount = products.reduce((a,b)=>a + (b.qty||0),0);
-      document.getElementById('stock-count').innerText = stockCount;
-      const today = new Date().toISOString().slice(0,10);
-      const todaySum = sales.filter(s=>s.date.slice(0,10)===today && !s.void).reduce((a,b)=>a + b.total,0);
-      document.getElementById('today-sales').innerText = `KSh ${todaySum.toFixed(2)}`;
-
-      // Products table
-      let html = '<table><thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Actions</th></tr></thead><tbody>';
-      for(const p of products){
-        html += `<tr><td>${p.name}</td><td>KSh ${p.price}</td><td>${p.qty}</td><td><button class='small-btn' data-id='${p.id}' data-act='edit'>Edit</button> <button class='small-btn' data-id='${p.id}' data-act='del'>Delete</button></td></tr>`
-      }
-      html += '</tbody></table>';
-      document.getElementById('products-table').innerHTML = html;
-      document.querySelectorAll('#products-table button').forEach(b=>b.onclick = ()=>{
-        const id = b.dataset.id; const act=b.dataset.act; if(act==='del'){ if(!confirm('Delete product?')) return; const products = load(DB.productsKey,[]); save(DB.productsKey,products.filter(x=>x.id!==id)); refreshAdmin()} else if(act==='edit'){ editProduct(id) }
-      });
-
-      // Employees
-      let eh = '<table><thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>';
-      for(const u of users){ eh += `<tr><td>${u.username}</td><td>${u.role}</td><td><button class='small-btn' data-id='${u.id}' data-act='delu'>Delete</button></td></tr>` }
-      eh += '</tbody></table>';
-      document.getElementById('emp-table').innerHTML = eh;
-      document.querySelectorAll('#emp-table button').forEach(b=>b.onclick=()=>{ if(!confirm('Delete user?')) return; const users = load(DB.usersKey,[]); save(DB.usersKey,users.filter(x=>x.id!==b.dataset.id)); refreshAdmin() })
-
-      // Expenses
-      let exh = '<table><thead><tr><th>When</th><th>Desc</th><th>Amount</th></tr></thead><tbody>';
-      for(const e of expenses){ exh += `<tr><td>${new Date(e.date).toLocaleString()}</td><td>${e.desc}</td><td>KSh ${Number(e.amt).toFixed(2)}</td></tr>` }
-      exh += '</tbody></table>';
-      document.getElementById('expenses-list').innerHTML = exh;
-
-      // report staff select
-      const fstaff = document.getElementById('filter-staff'); fstaff.innerHTML = '<option value="">All staff</option>' + load(DB.usersKey,[]).filter(u=>u.role!=='admin').map(u=>`<option value='${u.username}'>${u.username}</option>`).join('');
-
-      renderReport();
-      renderVoidList();
-    }
-
-    function editProduct(id){
-      const products = load(DB.productsKey,[]); const p = products.find(x=>x.id===id); if(!p) return;
-      const name = prompt('Name',p.name); if(name==null) return; const price = prompt('Price',p.price); if(price==null) return; const qty = prompt('Qty',p.qty); if(qty==null) return;
-      p.name=name; p.price=Number(price); p.qty=Number(qty); save(DB.productsKey,products); refreshAdmin();
-    }
-
-    function renderReport(){
-      const from = document.getElementById('filter-from').value; const to = document.getElementById('filter-to').value; const staff = document.getElementById('filter-staff').value; const product = document.getElementById('filter-product').value.trim().toLowerCase();
-      let sales = load(DB.salesKey,[]);
-      if(from) sales = sales.filter(s=>s.date.slice(0,10) >= from);
-      if(to) sales = sales.filter(s=>s.date.slice(0,10) <= to);
-      if(staff) sales = sales.filter(s=>s.by===staff);
-      if(product) sales = sales.filter(s=>s.items.some(i=>i.name.toLowerCase().includes(product)));
-      let rh = '<table><thead><tr><th>Receipt</th><th>Date</th><th>By</th><th>Total</th><th>Status</th></tr></thead><tbody>';
-      for(const s of sales){ rh += `<tr><td>${s.receipt}</td><td>${new Date(s.date).toLocaleString()}</td><td>${s.by}</td><td>KSh ${s.total.toFixed(2)}</td><td>${s.void?'<span style="color:#c00">Voided</span>':'OK'} ${!s.void?`<button class='small-btn' data-id='${s.id}' data-act='void'>Void</button>`:''}</td></tr>` }
-      rh += '</tbody></table>';
-      document.getElementById('report-table').innerHTML = rh;
-      document.querySelectorAll('#report-table button').forEach(b=>b.onclick=()=>{ if(!confirm('Void this receipt?')) return; const sales = load(DB.salesKey,[]); const s = sales.find(x=>x.id===b.dataset.id); if(s){s.void=true; save(DB.salesKey,sales); refreshAdmin()} });
-    }
-
-    function renderVoidList(){
-      const sales = load(DB.salesKey,[]).filter(s=>s.void);
-      let vh = '<table><thead><tr><th>Receipt</th><th>By</th><th>Date</th><th>Reason</th></tr></thead><tbody>';
-      for(const s of sales){ vh += `<tr><td>${s.receipt}</td><td>${s.by}</td><td>${new Date(s.date).toLocaleString()}</td><td>${s.voidReason||'--'}</td></tr>` }
-      vh += '</tbody></table>';
-      document.getElementById('void-list').innerHTML = vh;
-    }
-
-    function exportData(){
-      const data = {products:load(DB.productsKey,[]),users:load(DB.usersKey,[]),sales:load(DB.salesKey,[]),expenses:load(DB.expensesKey,[]),receiptCounter:localStorage.getItem(DB.receiptKey)||'0'};
-      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='smartbizz-export.json'; a.click(); URL.revokeObjectURL(url);
-    }
-    function importData(){
-      const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange=(e)=>{const f=e.target.files[0]; const r=new FileReader(); r.onload=()=>{try{const d=JSON.parse(r.result); if(d.products) save(DB.productsKey,d.products); if(d.users) save(DB.usersKey,d.users); if(d.sales) save(DB.salesKey,d.sales); if(d.expenses) save(DB.expensesKey,d.expenses); if(d.receiptCounter) localStorage.setItem(DB.receiptKey,String(d.receiptCounter)); alert('Imported'); refreshAdmin();}catch(er){alert('Invalid file')}}; r.readAsText(f)}; inp.click();
-    }
-
-    // --- Staff / Sales ---
-    function renderStaff(){
-      root.innerHTML = document.getElementById('staff-template').innerHTML;
-      document.getElementById('staff-email').innerText = state.user.username || state.user.email;
-      document.getElementById('btn-logout2').onclick = ()=>{state.user=null;renderLogin()}
-      document.getElementById('btn-sales-history').onclick = showMySales;
-      document.getElementById('clear-cart').onclick = ()=>{cart=[]; renderCart()}
-      document.getElementById('checkout').onclick = checkout;
-      document.getElementById('print-quote').onclick = ()=>{ printReceipt(lastPrinted || null) }
-      document.getElementById('search-prod').oninput = renderProductList;
-      cart = [];
-      lastPrinted = null;
-      renderProductList(); renderCart(); showMySales();
-    }
-
+    let users = [
+      { username: "admin", password: "admin123", role: "admin" },
+      { username: "cashier", password: "cash123", role: "staff" }
+    ];
+    let products = [
+      { name: "Bread", price: 50 },
+      { name: "Milk", price: 40 },
+      { name: "Sugar", price: 100 }
+    ];
     let cart = [];
-    let lastPrinted = null;
+    let receiptCounter = parseInt(localStorage.getItem("receiptCounter")) || 1;
 
-    function renderProductList(){
-      const q = document.getElementById('search-prod').value.trim().toLowerCase();
-      const products = load(DB.productsKey,[]).filter(p => p.name.toLowerCase().includes(q));
-      const el = document.getElementById('product-list'); el.innerHTML = '';
-      for(const p of products){
-        const div = document.createElement('div'); div.className='product card'; div.innerHTML = `<div class='name'>${p.name}</div><div class='small muted'>KSh ${p.price} | ${p.qty} in stock</div>`
-        div.onclick = ()=>{ addToCart(p.id) };
-        el.appendChild(div);
+    function login() {
+      let uname = document.getElementById("username").value;
+      let pass = document.getElementById("password").value;
+      let user = users.find(u => u.username === uname && u.password === pass);
+
+      if (user) {
+        document.getElementById("loginSection").classList.add("hidden");
+        if (user.role === "admin") {
+          document.getElementById("adminDashboard").classList.remove("hidden");
+        } else {
+          document.getElementById("staffDashboard").classList.remove("hidden");
+          loadProducts();
+        }
+      } else {
+        alert("Invalid credentials");
       }
     }
 
-    function addToCart(pid){
-      const products = load(DB.productsKey,[]); const p = products.find(x=>x.id===pid); if(!p) return; if(p.qty<=0) return alert('Out of stock');
-      const existing = cart.find(x=>x.id===p.id); if(existing){ existing.qty++; } else { cart.push({id:p.id,name:p.name,price:p.price,qty:1}) }
+    function logout() {
+      document.getElementById("adminDashboard").classList.add("hidden");
+      document.getElementById("staffDashboard").classList.add("hidden");
+      document.getElementById("loginSection").classList.remove("hidden");
+    }
+
+    function loadProducts() {
+      let list = document.getElementById("productList");
+      list.innerHTML = "";
+      products.forEach((p, i) => {
+        let row = `<tr><td>${p.name}</td><td>${p.price}</td><td><button class='btn' onclick='addToCart(${i})'>Add to Cart</button></td></tr>`;
+        list.innerHTML += row;
+      });
+    }
+
+    function addToCart(index) {
+      cart.push(products[index]);
       renderCart();
     }
 
-    function renderCart(){
-      const el = document.getElementById('cart-items'); el.innerHTML = '';
-      let sub = 0;
-      for(const c of cart){ sub += c.price * c.qty; const row = document.createElement('div'); row.className='cart-row'; row.innerHTML = `<div style='flex:1'><b>${c.name}</b><div class='small muted'>KSh ${c.price} x ${c.qty}</div></div><div style='display:flex;flex-direction:column;gap:6px'><div><button class='small-btn' data-id='${c.id}' data-act='+' >+</button> <button class='small-btn' data-id='${c.id}' data-act='-'>-</button></div><div><button class='small-btn' data-id='${c.id}' data-act='rm'>Remove</button></div></div>`; el.appendChild(row);
-        row.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const id=b.dataset.id; const act=b.dataset.act; const item = cart.find(x=>x.id===id); if(!item) return; if(act==='+'){ item.qty++; } else if(act==='-'){ item.qty--; if(item.qty<=0) cart = cart.filter(x=>x.id!==id); } else if(act==='rm'){ cart = cart.filter(x=>x.id!==id); } renderCart(); });
-      }
-      document.getElementById('cart-sub').innerText = `KSh ${sub.toFixed(2)}`;
+    function renderCart() {
+      let list = document.getElementById("cartList");
+      list.innerHTML = "";
+      let total = 0;
+      cart.forEach(item => {
+        list.innerHTML += `<tr><td>${item.name}</td><td>${item.price}</td></tr>`;
+        total += item.price;
+      });
+      document.getElementById("cartTotal").innerText = total;
     }
 
-    function checkout(){ if(cart.length===0) return alert('Cart empty'); const confirmPay = confirm('Confirm checkout and record sale?'); if(!confirmPay) return;
-      const products = load(DB.productsKey,[]);
-      // reduce stock
-      for(const c of cart){ const p = products.find(x=>x.id===c.id); if(p) p.qty = Math.max(0,p.qty - c.qty); }
-      save(DB.productsKey,products);
-      const sales = load(DB.salesKey,[]);
-      const receipt = nextReceipt();
-      const s = {id:'s'+Date.now(), receipt, date:new Date().toISOString(), by:state.user.username, items:cart.map(x=>({id:x.id,name:x.name,price:x.price,qty:x.qty})), total: cart.reduce((a,b)=>a + b.price*b.qty,0), void:false}
-      sales.push(s); save(DB.salesKey,sales);
-      lastPrinted = s;
-      cart = []; renderCart(); renderProductList(); showMySales(); alert('Sale recorded: '+receipt); printReceipt(s);
+    function checkout() {
+      if (cart.length === 0) { alert("Cart is empty"); return; }
+      let receiptNo = `SB-${String(receiptCounter).padStart(4, '0')}`;
+      let receiptDiv = document.getElementById("receiptContent");
+      let total = cart.reduce((sum, item) => sum + item.price, 0);
+
+      let html = `<h3>SmartBizz POS</h3>`;
+      html += `<p>Receipt No: ${receiptNo}</p>`;
+      html += `<table><tr><th>Product</th><th>Price</th></tr>`;
+      cart.forEach(item => { html += `<tr><td>${item.name}</td><td>${item.price}</td></tr>`; });
+      html += `</table>`;
+      html += `<p><b>Total:</b> ${total}</p>`;
+      html += `<p>Thank you for shopping!</p>`;
+
+      receiptDiv.innerHTML = html;
+      receiptDiv.classList.remove("hidden");
+      document.getElementById("printBtn").classList.remove("hidden");
+
+      receiptCounter++;
+      localStorage.setItem("receiptCounter", receiptCounter);
+      cart = [];
+      renderCart();
     }
 
-    function nextReceipt(){ let c = Number(localStorage.getItem(DB.receiptKey)||'0'); c++; localStorage.setItem(DB.receiptKey,String(c)); const num = String(c).padStart(4,'0'); return `SB-${num}` }
-
-    function showMySales(){ const sales = load(DB.salesKey,[]).filter(s=>s.by===state.user.username); let html = '<table><thead><tr><th>Receipt</th><th>Date</th><th>Total</th><th>Actions</th></tr></thead><tbody>';
-      for(const s of sales){ html += `<tr><td>${s.receipt}</td><td>${new Date(s.date).toLocaleString()}</td><td>KSh ${s.total.toFixed(2)}</td><td><button class='small-btn' data-id='${s.id}' data-act='print'>Print</button> ${!s.void?`<button class='small-btn' data-id='${s.id}' data-act='void'>Void</button>`:''}</td></tr>` }
-      html += '</tbody></table>';
-      document.getElementById('my-sales').innerHTML = html;
-      document.querySelectorAll('#my-sales button').forEach(b=>b.onclick=()=>{ const id=b.dataset.id; const act=b.dataset.act; const sales = load(DB.salesKey,[]); const s = sales.find(x=>x.id===id); if(!s) return; if(act==='print'){ printReceipt(s) } else if(act==='void'){ if(!confirm('Void this receipt?')) return; s.void=true; s.voidReason='Voided by cashier'; save(DB.salesKey,sales); showMySales(); } });
+    function printReceipt() {
+      let content = document.getElementById("receiptContent").innerHTML;
+      let w = window.open("", "PrintReceipt");
+      w.document.write(`<html><head><title>Receipt</title></head><body>${content}</body></html>`);
+      w.document.close();
+      w.print();
     }
-
-    function printReceipt(sale){ // render into receipt-print div and call print
-      const rdiv = document.getElementById('receipt-print'); rdiv.style.display='block';
-      const brand = `<div style='display:flex;align-items:center;gap:10px'><div style='width:54px;height:54px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800'>SB</div><div><div style='font-weight:800'>SmartBizz</div><div style='font-size:13px'>POS Receipt</div></div></div>`;
-      if(!sale){ rdiv.innerHTML = '<div class="card">No receipt to print</div>'; window.print(); return }
-      const itemsHtml = sale.items.map(it=>`<tr><td>${it.name}</td><td style='text-align:right'>${it.qty} x ${it.price}</td></tr>`).join('');
-      rdiv.innerHTML = `<div style='padding:8px;background:#fff;border-radius:8px;max-width:320px'>${brand}<hr/><div>Receipt: <b>${sale.receipt}</b></div><div>Date: ${new Date(sale.date).toLocaleString()}</div><table style='width:100%;margin-top:8px'>${itemsHtml}</table><hr/><div style='display:flex;justify-content:space-between'><div><b>Total</b></div><div><b>KSh ${sale.total.toFixed(2)}</b></div></div><div style='margin-top:12px;font-size:13px;color:var(--muted)'>Thank you for your purchase</div><div style='margin-top:12px;font-size:11px;color:#999'>Developed by Brian — brianmurayandungu@gmail.com</div></div>`;
-      setTimeout(()=>window.print(),300);
-    }
-
-    // --- start ---
-    renderLogin();
-
   </script>
 </body>
 </html>
