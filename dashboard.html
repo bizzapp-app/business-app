@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dashboard-page">
+
+  <nav class="sidebar">
+    <h2>SmartPOS</h2>
+    <ul>
+      <li><a href="#" onclick="showSection('pos')">💳 POS</a></li>
+      <li><a href="#" onclick="showSection('stock')">📦 Stock</a></li>
+      <li><a href="#" onclick="showSection('sales')">📈 Sales</a></li>
+      <li><a href="#" onclick="showSection('expenses')">💸 Expenses</a></li>
+      <li><a href="#" onclick="showSection('reports')">📊 Reports</a></li>
+      <li><a href="#" onclick="logout()">🚪 Logout</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <!-- POS Section -->
+    <section id="pos" class="active">
+      <h1>Point of Sale</h1>
+      <div id="posScreen"></div>
+    </section>
+
+    <!-- Stock Section -->
+    <section id="stock">
+      <h1>Stock Management</h1>
+      <form id="addStockForm">
+        <input type="text" id="itemName" placeholder="Item Name" required>
+        <input type="number" id="itemPrice" placeholder="Price" required>
+        <input type="number" id="itemQty" placeholder="Quantity" required>
+        <button type="submit">Add Item</button>
+      </form>
+      <table id="stockTable"></table>
+    </section>
+
+    <!-- Sales Section -->
+    <section id="sales">
+      <h1>Sales History</h1>
+      <table id="salesTable"></table>
+    </section>
+
+    <!-- Expenses Section -->
+    <section id="expenses">
+      <h1>Expenses</h1>
+      <form id="addExpenseForm">
+        <input type="text" id="expenseName" placeholder="Expense Name" required>
+        <input type="number" id="expenseAmount" placeholder="Amount" required>
+        <button type="submit">Add Expense</button>
+      </form>
+      <table id="expenseTable"></table>
+    </section>
+
+    <!-- Reports Section -->
+    <section id="reports">
+      <h1>Reports & Analytics</h1>
+      <canvas id="salesChart"></canvas>
+      <canvas id="stockChart"></canvas>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="charts.js"></script>
+</body>
+</html>
