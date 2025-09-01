@@ -1,58 +1,64 @@
-/* General */
 body {
+  font-family: Arial, sans-serif;
+  background: #f0f2f5;
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f5f7fa;
-  color: #333;
+  padding: 0;
 }
 
-/* Login */
-.login-page {
-  display: flex; align-items: center; justify-content: center;
-  height: 100vh; background: linear-gradient(135deg, #4a90e2, #7b4397);
-}
-.login-container {
-  background: #fff; padding: 40px; border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2); text-align: center;
-}
-.login-container input, .login-container button {
-  width: 100%; padding: 12px; margin: 10px 0;
-  border: none; border-radius: 8px;
-}
-button {
-  background: #4a90e2; color: #fff; font-weight: bold; cursor: pointer;
-}
-button:hover { background: #357ABD; }
-
-/* Dashboard */
-.dashboard-page {
+.navbar {
+  background: #3d5ed4;
+  color: white;
+  padding: 15px;
   display: flex;
+  justify-content: space-between;
 }
-.sidebar {
-  width: 220px; background: #2c3e50; color: white; height: 100vh;
-  position: fixed; left: 0; top: 0; padding: 20px;
-}
-.sidebar h2 { margin-bottom: 30px; }
-.sidebar ul { list-style: none; padding: 0; }
-.sidebar ul li { margin: 20px 0; }
-.sidebar ul li a {
-  color: white; text-decoration: none; font-weight: bold;
-}
-.sidebar ul li a:hover { color: #4a90e2; }
-.content {
-  margin-left: 240px; padding: 20px; flex-grow: 1;
-}
-section { display: none; }
-section.active { display: block; }
 
-/* Tables */
-table {
-  width: 100%; border-collapse: collapse; margin-top: 20px;
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20px;
+  gap: 20px;
 }
-th, td {
-  padding: 12px; border: 1px solid #ddd; text-align: center;
-}
-th { background: #4a90e2; color: white; }
 
-/* Reports */
-canvas { margin: 20px 0; }
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  flex: 1 1 300px;
+  box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px 0;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  background: #3d5ed4;
+  color: white;
+  cursor: pointer;
+  border: none;
+}
+
+button:hover {
+  background: #2c46a6;
+}
+
+.login-container {
+  width: 350px;
+  margin: 100px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.logo {
+  width: 80px;
+  margin: 10px 0;
+}
+
