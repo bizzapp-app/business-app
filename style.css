@@ -128,3 +128,19 @@ button:hover {
   background: #2c46a6;
 }
 
+
+select, input {
+  padding: 8px;
+  margin: 5px 0;
+  width: 90%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+form button {
+  margin-top: 10px;
+  width: 100%;
+}
+
+
+
