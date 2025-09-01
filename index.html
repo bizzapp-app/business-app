@@ -1,40 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SmartBiz Manager — Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>smartbizz App - Login</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="login-wrap">
-    <div class="login-card">
-      <img src="assets/profile.png" alt="App Logo" class="profile-img">
-      <h1>SmartBiz Manager</h1>
-      <p class="tag">Sales • Stock • Expenses • P&L</p>
+  <div class="login-container">
+    <img src="profile.png" alt="App Logo" class="profile-pic">
+    <h1>Welcome to smartbizz App</h1>
+    <p>Created by <strong>Your Name</strong> | Contact: <strong>you@email.com</strong></p>
 
-      <form id="loginForm" class="login-form">
-        <input id="username" placeholder="Username" autocomplete="username" required>
-        <input id="password" placeholder="Password" type="password" autocomplete="current-password" required>
-        <button type="submit" class="btn primary">Sign In</button>
-        <p id="loginError" class="error"></p>
-      </form>
-
-      <div class="creator">
-        <div class="creator-left">
-          <small>Created by</small>
-          <strong>Brian</strong>
-        </div>
-        <div class="creator-right">
-          <a href="mailto:youremail@example.com">brianmurayandungu@gmail.com</a><br/>
-          <a href="tel:+254700000000">+254 737083837</a>
-        </div>
-      </div>
-    </div>
+    <form id="loginForm">
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+    <p id="loginError" class="error"></p>
   </div>
 
-  <script src="script.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
-
-
