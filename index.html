@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="manifest" href="manifest.json">
   <title>SmartBizz App — Single-file POS (Complete)</title>
   <meta name="description" content="SmartBizz single-file POS — admin & staff, inventory, sales, receipts with offline QR, PDF export, M-Pesa demo, reports, backup" />
   <style>
@@ -338,5 +339,17 @@
     // --- Init ---
     window.onload = ()=>{ showAuth(); };
   </script>
+  if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => {
+        console.log('Service worker registered!', reg);
+      })
+      .catch(err => {
+        console.error('Service worker registration failed:', err);
+      });
+  });
+}
 </body>
 </html>
+
