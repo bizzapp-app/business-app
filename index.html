@@ -151,7 +151,23 @@
         <div style='display:flex;justify-content:flex-end;gap:8px'><button class='btn' id='login-btn'>Sign in</button></div>
       </div>`; $('login-btn').onclick = loginHandler; }
     async function loginHandler(){ const u=$('login-user').value.trim(); const p=$('login-pass').value; if(!u||!p){ alert('Enter username and password'); return; } const found = State.users.find(x=>x.username===u); if(!found){ alert('No such user'); return; } const h = await sha256Hex(p); if(h !== found.passwordHash){ alert('Invalid password'); return; } currentUser = found; $('auth-screen').style.display='none'; $('user-area').innerHTML = `<div class='small'>${escapeHtml(currentUser.name||currentUser.username)} • ${currentUser.role}</div>`; applyRole(); renderAll(); }
-    function applyRole(){ if(!currentUser) return; document.querySelector('button[data-page="employees"]').style.display = currentUser.role === 'admin' ? 'flex' : 'none'; document.querySelector('button[data-page="settings"]').style.display = currentUser.role === 'admin' ? 'flex' : 'none'; }
+    function applyRole(){
+      if(!currentUser) return;
+      document.querySelectorAll('nav button[data-page]').forEach(button => {
+        const page = button.getAttribute('data-page');
+        const pageEl = $(page + '-page');
+        if (currentUser.role === 'admin') {
+          button.style.display = 'flex';
+          if(pageEl) pageEl.style.display = 'block';
+        } else {
+          // Regular user, check permissions
+          const hasPermission = currentUser.permissions && currentUser.permissions[page];
+          button.style.display = hasPermission ? 'flex' : 'none';
+          if(pageEl) pageEl.style.display = hasPermission ? 'block' : 'none';
+        }
+      });
+      showPage('dashboard'); // Always show dashboard first
+    }
     window.onload = ()=>{ showAuth(); };
 
     // --- Tabs and Navigation ---
@@ -459,14 +475,14 @@
         </div>`;
       el.innerHTML = html;
       $('printable-content').classList.remove('hidden');
-      $('receipt-content').style.display = '';
+      $('receipt-content').style.display = 'block';
       $('report-content').style.display = 'none';
       showReceiptWidthSelector(true);
       setReceiptWidth(document.getElementById('receipt-width').value || "58mm");
       document.getElementById('printReceipt').onclick = ()=>{ window.print(); };
       document.getElementById('downloadPDF').onclick = ()=>downloadReceiptPDF();
     }
-    async function downloadReceiptPDF(){ const container = $('receipt-content'); const canvas = await html2canvas(container, {scale:2}); const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const pdf = new jsPDF({unit:'pt',format:[canvas.width, canvas.height]}); pdf.addImage(imgData,'PNG',0,0,canvas.width,canvas.height); const fname = `receipt_${new Date().toISOString().replace(/[:.]/g,'-')}.pdf`; pdf.save(fname); }
+    async function downloadReceiptPDF(){ const container = $('receipt-content'); const canvas = await html2canvas(container, {scale:2}); const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const pdf = new jspdf.jsPDF({unit:'pt',format:[canvas.width, canvas.height]}); pdf.addImage(imgData,'PNG',0,0,canvas.width,canvas.height); const fname = `receipt_${new Date().toISOString().replace(/[:.]/g,'-')}.pdf`; pdf.save(fname); }
     function openCashDrawer(){
       var escposCmd = '\x1B\x70\x00\x19\xFF'; // May vary by printer model
       var win = window.open('', '_blank');
@@ -643,18 +659,35 @@
       html += `</tbody></table>`; el.innerHTML = html;
     }
     window.openEmployeeModal = function(id){
-      const u = State.users.find(x=>x.id===id) || {id:null, name:'', username:'', role:'user'};
-      showModal(`${u.id?'Edit':'New'} Employee`, `
+      const u = State.users.find(x=>x.id===id) || {id:null, name:'', username:'', role:'user', permissions:{}};
+      const isNew = !u.id;
+      const pages = ['pos', 'products', 'inventory', 'customers', 'reports', 'zreport'];
+      let permissionsHtml = '';
+      if (u.role === 'user') {
+        permissionsHtml = `<div style="margin-top:12px"><h4>Permissions</h4><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;">${
+          pages.map(page => `<label><input type="checkbox" data-permission="${page}" ${u.permissions[page] ? 'checked' : ''}> ${page.charAt(0).toUpperCase() + page.slice(1)}</label>`).join('')
+        }</div></div>`;
+      }
+      showModal(`${isNew?'New':'Edit'} Employee`, `
         <input id='u-name' placeholder='Full Name' value='${escapeHtml(u.name||'')}' /><input id='u-username' placeholder='Username' value='${escapeHtml(u.username||'')}' />
-        <input id='u-pass' placeholder='Password (leave blank to not change)' type='password' /><input id='u-pass-confirm' placeholder='Confirm Password' type='password' />
-        <select id='u-role'><option value='user'>User</option><option value='admin'>Admin</option></select>
-        <div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+        <input id='u-pass' placeholder='Password${isNew ? '' : ' (leave blank to not change)'}' type='password' /><input id='u-pass-confirm' placeholder='Confirm Password' type='password' />
+        <select id='u-role' ${!isNew ? `onchange="this.closest('.modal-wrapper').querySelector('#permissions-section').style.display = this.value === 'user' ? 'block' : 'none'"` : ''}>
+          <option value='user'>User</option><option value='admin'>Admin</option>
+        </select>
+        <div id="permissions-section" style="${u.role === 'admin' ? 'display:none;' : ''}">
+          ${permissionsHtml}
+        </div>
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
       `, async (modal)=>{
         const name = modal.querySelector('#u-name').value.trim(); const username = modal.querySelector('#u-username').value.trim(); const role = modal.querySelector('#u-role').value; const pass = modal.querySelector('#u-pass').value; const passConfirm = modal.querySelector('#u-pass-confirm').value;
         if(!name||!username){ alert('Name and username required'); return; }
-        if(!u.id && (!pass || pass !== passConfirm)){ alert('Passwords must match for new users'); return; }
-        if(u.id){ Object.assign(u,{name,username,role}); if(pass) u.passwordHash = await sha256Hex(pass); }
-        else { const hash = await sha256Hex(pass); State.users.push({id:pid('u'),username,passwordHash:hash,role,name}); }
+        if(isNew && (!pass || pass !== passConfirm)){ alert('Passwords must match for new users'); return; }
+        const userPermissions = {};
+        if (role === 'user') {
+          modal.querySelectorAll('[data-permission]').forEach(cb => { userPermissions[cb.dataset.permission] = cb.checked; });
+        }
+        if(u.id){ Object.assign(u,{name,username,role,permissions:userPermissions}); if(pass) u.passwordHash = await sha256Hex(pass); }
+        else { const hash = await sha256Hex(pass); State.users.push({id:pid('u'),username,passwordHash:hash,role,name,permissions:userPermissions}); }
         saveState(); modal.remove(); renderAll();
       });
       if(u.role) $('u-role').value = u.role;
@@ -728,8 +761,8 @@
       `;
       $('printable-content').classList.remove('hidden');
       $('receipt-content').style.display = 'none';
-      $('report-content').style.display = '';
-      showReceiptWidthSelector(false); // Reports are full-width, no selector needed
+      $('report-content').style.display = 'block';
+      showReceiptWidthSelector(false); 
       document.getElementById('printReport').onclick = ()=>{ window.print(); };
     }
 
@@ -738,13 +771,18 @@
       const el = $('settings-page');
       const s = State.settings;
       el.innerHTML = `<h3>Settings</h3>
-        <div style='display:grid;gap:8px'>
+        <div class='card' style='display:grid;gap:8px'>
           <label>Business Name</label><input id='set-businessName' value='${escapeHtml(s.businessName||'')}' />
           <label>Address</label><input id='set-address' value='${escapeHtml(s.address||'')}' />
           <label>VAT/Tax No.</label><input id='set-vat' value='${escapeHtml(s.vat||'')}' />
           <label>Currency</label><input id='set-currency' value='${escapeHtml(s.currency||'')}' />
           <label>Tax Percent (%)</label><input id='set-taxPercent' type='number' value='${s.taxPercent||0}' />
           <button class='btn' id='set-save'>Save Settings</button>
+        </div>
+        <div class='card' style="margin-top:18px">
+          <h4>Danger Zone</h4>
+          <p>This action will permanently delete all data from the app. There is no undo.</p>
+          <button class='btn' style="background:red" onclick="factoryReset()">Factory Reset</button>
         </div>`;
       $('set-save').onclick = ()=>{
         State.settings = {
@@ -758,6 +796,13 @@
         alert('Settings saved!');
         renderAll();
       };
+    }
+
+    function factoryReset(){
+      if(confirm('WARNING: Are you sure you want to perform a factory reset? This will PERMANENTLY delete ALL app data, including sales history, products, and users. This action cannot be undone.')){
+        localStorage.removeItem(STORAGE_KEY);
+        window.location.reload();
+      }
     }
 
     // --- CSV Functions (import/export) ---
@@ -814,3 +859,4 @@
   </script>
 </body>
 </html>
+
