@@ -33,8 +33,8 @@
     @media print {
       body, html {margin:0 !important;padding:0 !important;background:#fff !important;}
       body * {visibility:hidden !important;box-shadow:none !important;border-radius:0 !important;}
-      #receipt-printable, #receipt-printable * {visibility:visible !important;position:static !important;left:0 !important;top:0 !important;width:100% !important;font-family:monospace !important;font-size:12px !important;background:#fff !important;color:#111 !important;box-shadow:none !important;border-radius:0 !important;}
-      #receipt-printable {width:var(--receipt-width,58mm) !important;min-width:0 !important;max-width:100% !important;padding:0 !important;margin:0 !important;}
+      #printable-content, #printable-content * {visibility:visible !important;position:static !important;left:0 !important;top:0 !important;width:100% !important;font-family:monospace !important;font-size:12px !important;background:#fff !important;color:#111 !important;box-shadow:none !important;border-radius:0 !important;}
+      #printable-content {width:var(--receipt-width,58mm) !important;min-width:0 !important;max-width:100% !important;padding:0 !important;margin:0 !important;}
       @page {margin:0 !important;size:auto;}
     }
     .receipt{width:var(--receipt-width,58mm);padding:12px;font-family:monospace}
@@ -83,8 +83,7 @@
       <div style="margin-top:12px"><button id="logoutBtn" class="btn secondary">Logout</button></div>
     </nav>
     <main id="main">
-      <!-- All section containers, rendered dynamically -->
-        <div id="dashboard-page" class="page card"></div>
+      <div id="dashboard-page" class="page card"></div>
         <div id="pos-page" class="page hidden"></div>
         <div id="products-page" class="page hidden card"></div>
         <div id="inventory-page" class="page hidden card"></div>
@@ -107,13 +106,16 @@
   <div id="auth-screen">
     <div id="auth-card"></div>
   </div>
-  <div id="receipt-printable" class="hidden"><div class="receipt card" id="receipt-content"></div></div>
+  <div id="printable-content" class="hidden">
+    <div class="receipt card" id="receipt-content"></div>
+    <div class="receipt card" id="report-content"></div>
+  </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     // --- State and login ---
     const STORAGE_KEY = 'smartbizz_complete_v1';
-    const defaultState = { nextReceipt:1001, users:[], products:[], customers:[], receipts:[], settings:{businessName:'SmartBizz',address:'',vat:'',currency:'KES',taxPercent:0} };
+    const defaultState = { nextReceipt:1001, users:[], products:[], customers:[], receipts:[], suppliers:[], settings:{businessName:'SmartBizz',address:'',vat:'',currency:'KES',taxPercent:0} };
     function loadState(){ const raw = localStorage.getItem(STORAGE_KEY); if(!raw){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); } try{return JSON.parse(raw);}catch(e){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); } }
     function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(State)); }
     let State = loadState(); let currentUser = null;
@@ -152,7 +154,7 @@
     function applyRole(){ if(!currentUser) return; document.querySelector('button[data-page="employees"]').style.display = currentUser.role === 'admin' ? 'flex' : 'none'; document.querySelector('button[data-page="settings"]').style.display = currentUser.role === 'admin' ? 'flex' : 'none'; }
     window.onload = ()=>{ showAuth(); };
 
-    // --- Tabs ---
+    // --- Tabs and Navigation ---
     function showPage(pg){
       document.querySelectorAll('main .page').forEach(p=>p.classList.add('hidden'));
       document.getElementById(pg+'-page').classList.remove('hidden');
@@ -177,7 +179,7 @@
       document.querySelectorAll('.receipt').forEach(function(el){
         el.style.width = val === "auto" ? "100%" : val;
       });
-      document.getElementById('receipt-printable').style.width = val === "auto" ? "100%" : val;
+      document.getElementById('printable-content').style.width = val === "auto" ? "100%" : val;
     }
     function showReceiptWidthSelector(show) {
       document.getElementById('receipt-width-selector').classList.toggle('hidden', !show);
@@ -189,11 +191,13 @@
 
     // --- Print error handling ---
     window.onafterprint = function(){
-      document.getElementById('receipt-printable').classList.add('hidden');
+      document.getElementById('printable-content').classList.add('hidden');
+      document.getElementById('receipt-content').innerHTML = '';
+      document.getElementById('report-content').innerHTML = '';
       showReceiptWidthSelector(false);
     };
     window.onbeforeprint = function(){
-      document.getElementById('receipt-printable').classList.remove('hidden');
+      document.getElementById('printable-content').classList.remove('hidden');
       showReceiptWidthSelector(true);
     };
 
@@ -210,9 +214,35 @@
       });
     }
 
-    // --- Main app rendering ---
-    // Helper for modal dialogs
-    function createModal(html){ const wrap = document.createElement('div'); wrap.style.position='fixed'; wrap.style.inset='0'; wrap.style.display='grid'; wrap.style.placeItems='center'; wrap.style.background='rgba(2,6,23,0.4)'; wrap.innerHTML = `<div style='background:#fff;padding:16px;border-radius:12px;min-width:320px'>${html}</div>`; document.body.appendChild(wrap); return wrap; }
+    // --- Main app rendering and modal system ---
+    function renderAll(){
+      renderDashboard();
+      renderPOS();
+      renderProducts();
+      renderInventory();
+      renderCustomers();
+      renderEmployees();
+      renderReports();
+      renderZReport();
+      renderSettings();
+      applyRole();
+    }
+
+    // Centralized modal system
+    function showModal(title, contentHtml, onSave, onCancel){
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-wrapper';
+      wrap.style.position='fixed'; wrap.style.inset='0'; wrap.style.display='grid'; wrap.style.placeItems='center'; wrap.style.background='rgba(2,6,23,0.4)';
+      wrap.innerHTML = `<div style='background:#fff;padding:16px;border-radius:12px;min-width:320px;max-width:90vw;max-height:90vh;overflow:auto'><h3 style='margin-top:0'>${title}</h3><div id="modal-content">${contentHtml}</div></div>`;
+      document.body.appendChild(wrap);
+      if(onCancel) wrap.querySelector('#modal-cancel').onclick = ()=>wrap.remove();
+      if(onSave) wrap.querySelector('#modal-save').onclick = ()=>onSave(wrap);
+      return wrap;
+    }
+    function closeModal(){
+        const modal = document.querySelector('.modal-wrapper');
+        if(modal) modal.remove();
+    }
 
     // --- Dashboard ---
     function renderDashboard(){
@@ -255,8 +285,11 @@
             <h4>Cart</h4>
             <div id="cart-list" style="min-height:80px"></div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <input id="cart-customer" placeholder="Customer (optional)" />
-              <select id="cart-payment"><option>Cash</option><option>M-Pesa</option></select>
+              <select id="cart-customer"><option value="">Walk-in Customer</option></select>
+              <button class="btn secondary" id="add-new-customer-btn">+ New</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <select id="cart-payment"><option>Cash</option><option>M-Pesa</option><option>Card</option></select>
             </div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
               <label class="small">Discount</label>
@@ -276,6 +309,7 @@
           </div>
         </div>
       `;
+      renderPOSCustomers();
       renderCategories();
       renderCatalog('');
       document.getElementById('pos-search').oninput = function(){ renderCatalog(this.value); };
@@ -286,7 +320,12 @@
       document.getElementById('cart-checkout').onclick = startCheckout;
       document.getElementById('cart-clear').onclick = clearCart;
       document.getElementById('cart-drawer').onclick = openCashDrawer;
+      document.getElementById('add-new-customer-btn').onclick = ()=>openCustomerModal();
       renderCart();
+    }
+    function renderPOSCustomers(){
+      const sel = document.getElementById('cart-customer'); if(!sel) return;
+      sel.innerHTML = `<option value="">Walk-in Customer</option>` + State.customers.map(c=>`<option value='${c.id}'>${escapeHtml(c.name)}</option>`).join('');
     }
     function renderCategories(){
       const sel = document.getElementById('pos-category');
@@ -299,7 +338,7 @@
       if(!el) return;
       const cat = document.getElementById('pos-category').value;
       const list = State.products.filter(p=> (p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku||'').toLowerCase().includes(q.toLowerCase())) && (cat==='all' || p.category===cat));
-      if(list.length===0){ el.innerHTML = '<div class="small">No matching products</div>'; return; }
+      if(list.length===0){ el.innerHTML = '<div class="small" style="padding:12px">No matching products</div>'; return; }
       el.innerHTML = list.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #f1f5fb"><div><strong>${escapeHtml(p.name)}</strong><div class='small'>${p.sku||''} • ${p.category||''} • Stock: ${p.stock}</div></div><div style='text-align:right'><div style='font-weight:800'>${formatCurrency(p.price)}</div><div style='margin-top:6px'><button class='btn' onclick='addToCart("${p.id}")' ${p.stock<=0? 'disabled':''}>Add</button></div></div></div>`).join('');
     }
     window.addToCart = function(id){
@@ -344,25 +383,84 @@
       if(Cart.length===0){ alert('Cart empty'); return; }
       const subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0); const discount = getCartDiscount();
       const tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100); const total = subtotal - discount + tax;
-      const customer = document.getElementById('cart-customer').value.trim() || null;
+      const customerId = document.getElementById('cart-customer').value || null;
+      const customer = State.customers.find(c=>c.id === customerId);
       const payment = document.getElementById('cart-payment').value || 'Cash';
-      const modal = createModal(`<h3>Checkout</h3><div>Subtotal: ${formatCurrency(subtotal)}</div><div>Discount: ${formatCurrency(discount)}</div><div>Tax: ${formatCurrency(tax)}</div><div style='font-weight:800'>Total: ${formatCurrency(total)}</div><div style='display:flex;gap:8px;margin-top:8px'><button class='btn' id='ch-pay'>Confirm Payment</button><button class='btn secondary' id='ch-cancel'>Cancel</button></div>`);
-      modal.querySelector('#ch-cancel').onclick = ()=>modal.remove();
-      modal.querySelector('#ch-pay').onclick = ()=>{ modal.remove(); if(payment==='M-Pesa'){ simulateMpesa(customer, total).then(()=>completeSale(payment, customer, discount)); } else { completeSale(payment, customer, discount); } };
+      showModal(`Checkout`, `
+        <div>Subtotal: ${formatCurrency(subtotal)}</div>
+        <div>Discount: ${formatCurrency(discount)}</div>
+        <div>Tax: ${formatCurrency(tax)}</div>
+        <div style='font-weight:800'>Total: ${formatCurrency(total)}</div>
+        <div style='display:flex;gap:8px;margin-top:8px'><button class='btn' id='modal-save'>Confirm Payment</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+      `, ()=>{
+        if(payment==='M-Pesa'){
+          simulateMpesa(total).then(()=>{
+            completeSale(payment, customerId, discount);
+            closeModal();
+          });
+        } else {
+          completeSale(payment, customerId, discount);
+          closeModal();
+        }
+      }, null);
     }
-    function simulateMpesa(customer,total){ return new Promise(resolve=>{ const modal = createModal(`<h3>Lipa na M-Pesa</h3><div class='small'>Enter phone</div><input id='mp-phone' placeholder='2547XXXXXXXX' /><div style='display:flex;justify-content:flex-end;gap:8px;margin-top:8px'><button class='btn' id='mp-send'>Send STK</button><button class='btn secondary' id='mp-cancel'>Cancel</button></div>`); modal.querySelector('#mp-cancel').onclick = ()=>{ modal.remove(); }; modal.querySelector('#mp-send').onclick = ()=>{ const phone = modal.querySelector('#mp-phone').value.trim(); if(!phone){ alert('Phone required'); return; } modal.innerHTML = `<h3>Waiting for payment...</h3><div class='small'>Simulated STK push sent to ${escapeHtml(phone)}. Confirming...</div>`; setTimeout(()=>{ modal.innerHTML = `<h3>Payment confirmed</h3><div class='small'>M-Pesa payment received</div><div style='display:flex;justify-content:flex-end;margin-top:8px'><button class='btn' id='mp-done'>Done</button></div>`; modal.querySelector('#mp-done').onclick = ()=>{ modal.remove(); resolve(); } }, 1200); } }); }
-    function completeSale(method, customer, discount){ const subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0); const tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100); const total = subtotal - discount + tax; Cart.forEach(it=>{ const p = State.products.find(x=>x.id===it.id); if(p) p.stock -= it.qty; }); const r = { number: State.nextReceipt++, date:new Date().toISOString(), cashier:currentUser.username, cashierName:currentUser.name||currentUser.username, items:JSON.parse(JSON.stringify(Cart)), subtotal,discount,tax,total,customer,method }; State.receipts.push(r); saveState(); renderAll(); showReceipt(r); Cart=[]; renderCart(); document.getElementById('cart-customer').value=''; alert('Sale recorded'); }
-    async function showReceipt(r){ const el = $('receipt-content'); el.innerHTML = '';
-      el.innerHTML += `<div style='text-align:center;margin-bottom:8px'><div class='logo' style='width:72px;height:72px;border-radius:999px;margin:0 auto;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900'>SB</div><div style='font-weight:900;font-size:18px;margin-top:8px'>${escapeHtml(State.settings.businessName||'SmartBizz')}</div><div class='small'>${escapeHtml(State.settings.address||'')}</div><div class='small'>VAT: ${escapeHtml(State.settings.vat||'')}</div></div>`;
-      el.innerHTML += `<div class='small'>Receipt #: <strong>${r.number}</strong><br/>${new Date(r.date).toLocaleString()}<br/>Cashier: ${escapeHtml(r.cashierName)}<br/>Payment: ${escapeHtml(r.method||'Cash')}</div><hr/>`;
-      r.items.forEach(i=> el.innerHTML += `<div style='display:flex;justify-content:space-between'><div>${escapeHtml(i.name)} x${i.qty}</div><div>${formatCurrency(i.price*i.qty)}</div></div>`);
-      el.innerHTML += `<hr/><div style='display:flex;justify-content:space-between'><div>Subtotal</div><div>${formatCurrency(r.subtotal)}</div></div>`;
-      el.innerHTML += `<div style='display:flex;justify-content:space-between'><div>Discount</div><div>${formatCurrency(r.discount||0)}</div></div>`;
-      el.innerHTML += `<div style='display:flex;justify-content:space-between'><div>Tax</div><div>${formatCurrency(r.tax)}</div></div>`;
-      el.innerHTML += `<div style='display:flex;justify-content:space-between;font-weight:800;font-size:16px'><div>Total</div><div>${formatCurrency(r.total)}</div></div>`;
-      el.innerHTML += `<div style='text-align:center;margin-top:8px;font-size:12px' class='small'>${escapeHtml(State.settings.businessName||'SmartBizz')} • ${escapeHtml(State.settings.address||'')} • VAT: ${escapeHtml(State.settings.vat||'')}</div>`;
-      el.innerHTML += `<div style='display:flex;gap:8px;justify-content:center;margin-top:10px'><button class='btn' id='printReceipt'>Print</button><button class='btn secondary' id='downloadPDF'>Download PDF</button></div>`;
-      $('receipt-printable').classList.remove('hidden');
+    function simulateMpesa(total){
+      return new Promise(resolve=>{
+        showModal(`Lipa na M-Pesa`, `
+          <div class='small'>Enter phone</div>
+          <input id='mp-phone' placeholder='2547XXXXXXXX' />
+          <div style='display:flex;justify-content:flex-end;gap:8px;margin-top:8px'><button class='btn' id='mp-send'>Send STK</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+          `, (modal)=>{
+              const phone = document.getElementById('mp-phone').value.trim();
+              if(!phone){ alert('Phone required'); return; }
+              const modalContent = document.getElementById('modal-content');
+              modalContent.innerHTML = `<h3>Waiting for payment...</h3><div class='small'>Simulated STK push sent to ${escapeHtml(phone)}. Confirming...</div>`;
+              setTimeout(()=>{
+                modalContent.innerHTML = `<h3>Payment confirmed</h3><div class='small'>M-Pesa payment received</div><div style='display:flex;justify-content:flex-end;margin-top:8px'><button class='btn' id='modal-done'>Done</button></div>`;
+                modalContent.querySelector('#modal-done').onclick = ()=>{ modal.remove(); resolve(); }
+              }, 1200);
+          }, null
+        );
+      });
+    }
+    function completeSale(method, customerId, discount){
+      const subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0);
+      const tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100);
+      const total = subtotal - discount + tax;
+      Cart.forEach(it=>{ const p = State.products.find(x=>x.id===it.id); if(p) p.stock -= it.qty; });
+      const r = { number: State.nextReceipt++, date:new Date().toISOString(), cashier:currentUser.username, cashierName:currentUser.name||currentUser.username, items:JSON.parse(JSON.stringify(Cart)), subtotal,discount,tax,total,customerId,method };
+      State.receipts.push(r);
+      saveState();
+      renderAll();
+      showReceipt(r);
+      Cart=[];
+      renderCart();
+      closeModal();
+      alert('Sale recorded');
+    }
+    async function showReceipt(r){
+      const el = $('receipt-content');
+      const rep = $('report-content');
+      el.innerHTML = '';
+      rep.innerHTML = '';
+      const customer = r.customerId ? State.customers.find(c=>c.id===r.customerId) : null;
+      let html = `<div style='text-align:center;margin-bottom:8px'><div class='logo' style='width:72px;height:72px;border-radius:999px;margin:0 auto;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900'>SB</div><div style='font-weight:900;font-size:18px;margin-top:8px'>${escapeHtml(State.settings.businessName||'SmartBizz')}</div><div class='small'>${escapeHtml(State.settings.address||'')}</div><div class='small'>VAT: ${escapeHtml(State.settings.vat||'')}</div></div>`;
+      html += `<div class='small'>Receipt #: <strong>${r.number}</strong><br/>${new Date(r.date).toLocaleString()}<br/>Cashier: ${escapeHtml(r.cashierName)}<br/>Payment: ${escapeHtml(r.method||'Cash')}${customer?'<br/>Customer: '+escapeHtml(customer.name):''}</div><hr/>`;
+      r.items.forEach(i=> html += `<div style='display:flex;justify-content:space-between'><div>${escapeHtml(i.name)} x${i.qty}</div><div>${formatCurrency(i.price*i.qty)}</div></div>`);
+      html += `<hr/><div style='display:flex;justify-content:space-between'><div>Subtotal</div><div>${formatCurrency(r.subtotal)}</div></div>`;
+      html += `<div style='display:flex;justify-content:space-between'><div>Discount</div><div>${formatCurrency(r.discount||0)}</div></div>`;
+      html += `<div style='display:flex;justify-content:space-between'><div>Tax</div><div>${formatCurrency(r.tax)}</div></div>`;
+      html += `<div style='display:flex;justify-content:space-between;font-weight:800;font-size:16px'><div>Total</div><div>${formatCurrency(r.total)}</div></div>`;
+      html += `<div style='text-align:center;margin-top:8px;font-size:12px' class='small'>${escapeHtml(State.settings.businessName||'SmartBizz')} • ${escapeHtml(State.settings.address||'')} • VAT: ${escapeHtml(State.settings.vat||'')}</div>`;
+      html += `<div style='display:flex;gap:8px;justify-content:center;margin-top:10px'>
+          <button class='btn' id='printReceipt'>Print</button>
+          <button class='btn secondary' id='downloadPDF'>Download PDF</button>
+          ${currentUser && currentUser.role === 'admin' ? `<button class='btn secondary' onclick='openRefundModal(${JSON.stringify(r).replace(/'/g, "\\'")})'>Refund</button>` : ''}
+        </div>`;
+      el.innerHTML = html;
+      $('printable-content').classList.remove('hidden');
+      $('receipt-content').style.display = '';
+      $('report-content').style.display = 'none';
       showReceiptWidthSelector(true);
       setReceiptWidth(document.getElementById('receipt-width').value || "58mm");
       document.getElementById('printReceipt').onclick = ()=>{ window.print(); };
@@ -377,202 +475,342 @@
       win.close();
       alert("Sent open drawer command to printer. Ensure your printer supports ESC/POS!");
     }
+    window.openRefundModal = function(receipt){
+      const receiptItems = receipt.items.map(i => {
+        return `<label><input type="checkbox" checked data-product-id="${i.id}" data-qty="${i.qty}" data-price="${i.price}" data-name="${i.name}" /> ${i.name} (x${i.qty}) - ${formatCurrency(i.price * i.qty)}</label><br/>`;
+      }).join('');
+      showModal(`Refund Receipt #${receipt.number}`, `
+        <p>Select items to refund:</p>
+        <div>${receiptItems}</div>
+        <div style='margin-top:12px;display:flex;justify-content:flex-end;gap:8px'>
+          <button class='btn' id='modal-save'>Process Refund</button>
+          <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, (modal)=>{
+        const selectedItems = [];
+        modal.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
+          selectedItems.push({
+            id: input.dataset.productId,
+            qty: parseInt(input.dataset.qty),
+            price: parseFloat(input.dataset.price),
+            name: input.dataset.name
+          });
+        });
+        if(selectedItems.length === 0){ alert('No items selected for refund.'); return; }
+        if(confirm('Are you sure you want to process this refund?')){
+          selectedItems.forEach(refundItem => {
+            const product = State.products.find(p => p.id === refundItem.id);
+            if(product) product.stock += refundItem.qty;
+          });
+          const refundTotal = selectedItems.reduce((sum, si) => sum + (si.price * si.qty), 0);
+          State.receipts.push({
+            number: `R${State.nextReceipt++}`,
+            date: new Date().toISOString(),
+            cashier: currentUser.username,
+            cashierName: currentUser.name || currentUser.username,
+            type: 'refund',
+            originalReceipt: receipt.number,
+            items: selectedItems,
+            total: -refundTotal
+          });
+          saveState();
+          modal.remove();
+          renderAll();
+          alert('Refund processed successfully.');
+        }
+      });
+    }
 
     // --- Products ---
     function renderProducts(){
       const el = $('products-page');
-      let html = `<h3>Products</h3>
+      el.innerHTML = `<h3>Products</h3>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
           <button class="btn" id="prod-new">+ New Product</button>
           <button class="btn secondary" id="prod-export">Export CSV</button>
         </div>
         <div id="products-table"></div>`;
-      el.innerHTML = html;
       renderProductsTable();
       document.getElementById('prod-new').onclick = ()=>openProductModal();
       document.getElementById('prod-export').onclick = ()=>exportCSV('products');
     }
     function renderProductsTable(){ const el = $('products-table'); if(!el) return; let html = `<table><thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>`; State.products.forEach(p=>{ html += `<tr><td>${p.sku||''}</td><td>${escapeHtml(p.name)}</td><td>${p.category||''}</td><td>${formatCurrency(p.price)}</td><td style='${p.stock<=5?"color:red;":""}'>${p.stock}</td><td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openProductModal("${p.id}")'>Edit</button> <button class='btn' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td></tr>`; }); html += `</tbody></table>`; el.innerHTML = html; }
-    window.openProductModal = function(id){ const p = State.products.find(x=>x.id===id) || {id:null,sku:'',name:'',price:0,stock:0,category:''}; const modal = createModal(`<h3>${p.id? 'Edit':'New'} product</h3><input id='m-sku' placeholder='SKU' value='${p.sku||''}' /><input id='m-name' placeholder='Name' value='${escapeHtml(p.name||'')}' /><input id='m-cat' placeholder='Category' value='${escapeHtml(p.category||'')}' /><input id='m-price' placeholder='Price' type='number' value='${p.price||0}' /><input id='m-stock' placeholder='Stock' type='number' value='${p.stock||0}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='m-save'>Save</button><button class='btn secondary' id='m-cancel'>Cancel</button></div>`); modal.querySelector('#m-cancel').onclick = ()=>modal.remove(); modal.querySelector('#m-save').onclick = ()=>{ const sku = modal.querySelector('#m-sku').value.trim(); const name = modal.querySelector('#m-name').value.trim(); const cat = modal.querySelector('#m-cat').value.trim(); const price = Number(modal.querySelector('#m-price').value||0); const stock = Number(modal.querySelector('#m-stock').value||0); if(!name){ alert('Name required'); return; } if(p.id){ Object.assign(p,{sku,name,category:cat,price,stock}); } else { State.products.push({id:pid('p'),sku,name,category:cat,price,stock}); } saveState(); modal.remove(); renderAll(); }; }
+    window.openProductModal = function(id){ const p = State.products.find(x=>x.id===id) || {id:null,sku:'',name:'',price:0,stock:0,category:''}; showModal(`${p.id? 'Edit':'New'} product`, `
+      <input id='m-sku' placeholder='SKU' value='${p.sku||''}' /><input id='m-name' placeholder='Name' value='${escapeHtml(p.name||'')}' /><input id='m-cat' placeholder='Category' value='${escapeHtml(p.category||'')}' /><input id='m-price' placeholder='Price' type='number' value='${p.price||0}' /><input id='m-stock' placeholder='Stock' type='number' value='${p.stock||0}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+    `, (modal)=>{
+      const sku = modal.querySelector('#m-sku').value.trim(); const name = modal.querySelector('#m-name').value.trim(); const cat = modal.querySelector('#m-cat').value.trim(); const price = Number(modal.querySelector('#m-price').value||0); const stock = Number(modal.querySelector('#m-stock').value||0);
+      if(!name){ alert('Name required'); return; }
+      if(p.id){ Object.assign(p,{sku,name,category:cat,price,stock}); } else { State.products.push({id:pid('p'),sku,name,category:cat,price,stock}); }
+      saveState(); modal.remove(); renderAll();
+    });}
     window.deleteProduct = function(id){ if(!confirm('Delete product?')) return; State.products = State.products.filter(x=>x.id!==id); saveState(); renderAll(); }
-
+    
     // --- Inventory ---
     function renderInventory(){
       const el = $('inventory-page');
-      let html = `<h3>Inventory</h3>
+      el.innerHTML = `<h3>Inventory</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button class="btn" id="inv-adjust">Adjust Stock</button>
           <button class="btn secondary" id="inv-import">Import CSV</button>
+          <button class="btn secondary" id="inv-suppliers">Suppliers</button>
         </div>
         <div id="inventory-table"></div>`;
-      el.innerHTML = html;
       renderInventoryTable();
       document.getElementById('inv-adjust').onclick = openAdjustModal;
       document.getElementById('inv-import').onclick = importProductsCSV;
+      document.getElementById('inv-suppliers').onclick = renderSuppliers;
     }
     function renderInventoryTable(){ const el = $('inventory-table'); if(!el) return; let html = `<table><thead><tr><th>SKU</th><th>Name</th><th>Stock</th><th>Actions</th></tr></thead><tbody>`; State.products.forEach(p=> html += `<tr><td>${p.sku||''}</td><td>${escapeHtml(p.name)}</td><td style='${p.stock<=5?"color:red;":""}'>${p.stock}</td><td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openAdjustModal()'>Adjust</button> <button class='btn' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td></tr>`); html += `</tbody></table>`; el.innerHTML = html; }
-    window.openAdjustModal = function(){ const modal = createModal(`<h3>Stock adjustment</h3><select id='m-adj-prod'>${State.products.map(p=>`<option value='${p.id}'>${escapeHtml(p.name)} (stock: ${p.stock})</option>`).join('')}</select><input id='m-adj-qty' placeholder='Qty (use negative to subtract)' type='number' value='0' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='m-adj-save'>Apply</button><button class='btn secondary' id='m-adj-cancel'>Cancel</button></div>`); modal.querySelector('#m-adj-cancel').onclick = ()=>modal.remove(); modal.querySelector('#m-adj-save').onclick = ()=>{ const pidv = modal.querySelector('#m-adj-prod').value; const q = Number(modal.querySelector('#m-adj-qty').value||0); const p = State.products.find(x=>x.id===pidv); p.stock += q; saveState(); modal.remove(); renderAll(); } }
-    window.importProductsCSV = function(){ const inp = document.createElement('input'); inp.type='file'; inp.accept='.csv'; inp.onchange = e=>{ const f = e.target.files[0]; const r = new FileReader(); r.onload = ev=>{ const text = ev.target.result; const lines = text.split(/\r?\n/).filter(Boolean); lines.forEach((ln,i)=>{ if(i===0) return; const parts = ln.split(',').map(s=>s.trim()); if(parts.length>=5){ const sku=parts[0], name=parts[1], cat=parts[2], price=Number(parts[3]||0), stock=Number(parts[4]||0); State.products.push({id:pid('p'),sku,name,category:cat,price,stock}); } }); saveState(); renderAll(); }; r.readAsText(f); }; inp.click(); }
+    window.openAdjustModal = function(){ showModal(`Stock adjustment`, `
+      <select id='m-adj-prod'>${State.products.map(p=>`<option value='${p.id}'>${escapeHtml(p.name)} (stock: ${p.stock})</option>`).join('')}</select>
+      <input id='m-adj-qty' placeholder='Qty (use negative to subtract)' type='number' value='0' />
+      <div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Apply</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+    `, (modal)=>{
+      const prodId = modal.querySelector('#m-adj-prod').value; const qty = Number(modal.querySelector('#m-adj-qty').value||0);
+      if(qty===0) {modal.remove(); return;}
+      const p = State.products.find(x=>x.id===prodId);
+      if(p) p.stock += qty;
+      saveState(); modal.remove(); renderAll();
+    }); }
+    function renderSuppliers(){
+      const el = $('inventory-page');
+      el.innerHTML = `<h3>Suppliers</h3>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="btn" id="supp-new">+ New Supplier</button>
+        </div>
+        <div id="suppliers-table"></div>`;
+      const table = $('suppliers-table');
+      table.innerHTML = `<table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>
+      ${State.suppliers.map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.contact||''}</td><td><button class='btn secondary' onclick='openSupplierModal("${s.id}")'>Edit</button> <button class='btn' onclick='deleteSupplier("${s.id}")'>Delete</button></td></tr>`).join('')}
+      </tbody></table>`;
+      $('supp-new').onclick = ()=>openSupplierModal();
+    }
+    window.openSupplierModal = function(id){ const s = State.suppliers.find(x=>x.id===id) || {id:null, name:'', contact:''}; showModal(`${s.id?'Edit':'New'} Supplier`, `
+      <input id='s-name' placeholder='Name' value='${escapeHtml(s.name||'')}' /><input id='s-contact' placeholder='Contact Info' value='${escapeHtml(s.contact||'')}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+    `, (modal)=>{
+      const name = modal.querySelector('#s-name').value.trim(); const contact = modal.querySelector('#s-contact').value.trim();
+      if(!name){ alert('Name required'); return; }
+      if(s.id){ Object.assign(s,{name,contact}); } else { State.suppliers.push({id:pid('s'),name,contact}); }
+      saveState(); modal.remove(); renderSuppliers();
+    }); }
+    window.deleteSupplier = function(id){ if(!confirm('Delete supplier?')) return; State.suppliers = State.suppliers.filter(x=>x.id!==id); saveState(); renderSuppliers(); }
 
     // --- Customers ---
     function renderCustomers(){
       const el = $('customers-page');
       el.innerHTML = `<h3>Customers</h3>
-        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-          <input id="cust-name" placeholder="Name" /><input id="cust-contact" placeholder="Phone/Email" /><button class="btn" id="cust-add">Add</button>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <button class="btn" id="cust-new">+ New Customer</button>
         </div>
         <div id="customers-table"></div>`;
       renderCustomersTable();
-      document.getElementById('cust-add').onclick = addCustomer;
+      document.getElementById('cust-new').onclick = ()=>openCustomerModal();
     }
-    window.addCustomer = function(){
-      const name = document.getElementById('cust-name').value.trim();
-      const contact = document.getElementById('cust-contact').value.trim();
-      if(!name){ alert('Name required'); return; }
-      State.customers.push({id:pid('c'),name,contact}); saveState();
-      document.getElementById('cust-name').value=''; document.getElementById('cust-contact').value='';
-      renderCustomersTable();
+    function renderCustomersTable(){
+      const el = $('customers-table'); if(!el) return;
+      let html = `<table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>`;
+      State.customers.forEach(c=>{ html += `<tr><td>${escapeHtml(c.name)}</td><td>${c.contact||''}</td><td><button class='btn secondary' onclick='openCustomerModal("${c.id}")'>Edit</button> <button class='btn' onclick='deleteCustomer("${c.id}")'>Delete</button></td></tr>`; });
+      html += `</tbody></table>`; el.innerHTML = html;
     }
-    function renderCustomersTable(){ const el = $('customers-table'); if(!el) return; let html = `<table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>`; State.customers.forEach(c=> html += `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.contact||'')}</td><td><button class='btn secondary' onclick='editCustomer("${c.id}")'>Edit</button> <button class='btn' onclick='deleteCustomer("${c.id}")'>Delete</button></td></tr>`); html += `</tbody></table>`; el.innerHTML = html; }
-    window.editCustomer = function(id){ const c = State.customers.find(x=>x.id===id); const modal = createModal(`<h3>Edit customer</h3><input id='m-c-name' value='${escapeHtml(c.name)}' /><input id='m-c-contact' value='${escapeHtml(c.contact||'')}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='m-c-save'>Save</button><button class='btn secondary' id='m-c-cancel'>Cancel</button></div>`); modal.querySelector('#m-c-cancel').onclick = ()=>modal.remove(); modal.querySelector('#m-c-save').onclick = ()=>{ c.name = modal.querySelector('#m-c-name').value.trim(); c.contact = modal.querySelector('#m-c-contact').value.trim(); saveState(); modal.remove(); renderCustomersTable(); } }
-    window.deleteCustomer = function(id){ if(!confirm('Delete customer?')) return; State.customers = State.customers.filter(x=>x.id!==id); saveState(); renderCustomersTable(); }
-
+    window.openCustomerModal = function(id){
+      const c = State.customers.find(x=>x.id===id) || {id:null, name:'', contact:''};
+      showModal(`${c.id? 'Edit':'New'} Customer`, `
+        <input id='c-name' placeholder='Name' value='${escapeHtml(c.name||'')}' /><input id='c-contact' placeholder='Contact Info' value='${escapeHtml(c.contact||'')}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+      `, (modal)=>{
+        const name = modal.querySelector('#c-name').value.trim(); const contact = modal.querySelector('#c-contact').value.trim();
+        if(!name){ alert('Name required'); return; }
+        if(c.id){ Object.assign(c,{name,contact}); } else { State.customers.push({id:pid('c'),name,contact}); }
+        saveState(); modal.remove(); renderAll();
+      });
+    }
+    window.deleteCustomer = function(id){ if(!confirm('Delete customer?')) return; State.customers = State.customers.filter(x=>x.id!==id); saveState(); renderAll(); }
+    
     // --- Employees ---
     function renderEmployees(){
       const el = $('employees-page');
-      el.innerHTML = `<h3>Employees (Admin only)</h3>
+      el.innerHTML = `<h3>Employees</h3>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <input id="emp-name" placeholder="Full name" />
-          <input id="emp-username" placeholder="Username" />
-          <input id="emp-password" placeholder="Password" type="password" />
-          <select id="emp-role"><option value="staff">Staff</option><option value="admin">Admin</option></select>
-          <button class="btn" id="emp-add">Create</button>
+          <button class="btn" id="emp-new">+ New Employee</button>
         </div>
         <div id="employees-table"></div>`;
       renderEmployeesTable();
-      document.getElementById('emp-add').onclick = addEmployee;
+      document.getElementById('emp-new').onclick = ()=>openEmployeeModal();
     }
-    window.addEmployee = async function(){
-      if(!currentUser || currentUser.role!=='admin'){ alert('Only admin can add employees'); return; }
-      const name = document.getElementById('emp-name').value.trim();
-      const username = document.getElementById('emp-username').value.trim();
-      const pass = document.getElementById('emp-password').value;
-      const role = document.getElementById('emp-role').value;
-      if(!name||!username||!pass){ alert('All fields required'); return; }
-      if(State.users.some(u=>u.username===username)){ alert('Username exists'); return; }
-      const hash = await sha256Hex(pass);
-      State.users.push({id:pid('u'),username,passwordHash:hash,role,name}); saveState();
-      document.getElementById('emp-name').value=''; document.getElementById('emp-username').value=''; document.getElementById('emp-password').value='';
-      renderEmployeesTable();
+    function renderEmployeesTable(){
+      const el = $('employees-table'); if(!el) return;
+      let html = `<table><thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
+      State.users.forEach(u=>{ html += `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.role)}</td><td><button class='btn secondary' onclick='openEmployeeModal("${u.id}")'>Edit</button> <button class='btn' onclick='deleteEmployee("${u.id}")'>Delete</button></td></tr>`; });
+      html += `</tbody></table>`; el.innerHTML = html;
     }
-    function renderEmployeesTable(){ const el = $('employees-table'); if(!el) return; let html = `<table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead><tbody>`; State.users.forEach(u=> html += `<tr><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.name||'')}</td><td>${escapeHtml(u.role)}</td><td>${u.username!=='admin'?`<button class='btn secondary' onclick='editEmployee("${u.id}")'>Edit</button> <button class='btn' onclick='deleteEmployee("${u.id}")'>Delete</button>` : ''}</td></tr>`); html += `</tbody></table>`; el.innerHTML = html; }
-    window.editEmployee = function(id){ if(!currentUser || currentUser.role!=='admin'){ alert('Only admin'); return; } const u = State.users.find(x=>x.id===id); const modal = createModal(`<h3>Edit user</h3><input id='m-u-name' value='${escapeHtml(u.name||'')}' /><input id='m-u-username' value='${escapeHtml(u.username)}' /><input id='m-u-pass' placeholder='New password (leave blank)' /><select id='m-u-role'><option value='staff' ${u.role==='staff'?'selected':''}>Staff</option><option value='admin' ${u.role==='admin'?'selected':''}>Admin</option></select><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='m-u-save'>Save</button><button class='btn secondary' id='m-u-cancel'>Cancel</button></div>`); modal.querySelector('#m-u-cancel').onclick = ()=>modal.remove(); modal.querySelector('#m-u-save').onclick = async ()=>{ u.name = modal.querySelector('#m-u-name').value.trim(); u.username = modal.querySelector('#m-u-username').value.trim(); const np = modal.querySelector('#m-u-pass').value; if(np) u.passwordHash = await sha256Hex(np); u.role = modal.querySelector('#m-u-role').value; saveState(); modal.remove(); renderEmployeesTable(); } }
-    window.deleteEmployee = function(id){ if(!currentUser || currentUser.role!=='admin'){ alert('Only admin'); return; } const u = State.users.find(x=>x.id===id); if(!u) return; if(u.username==='admin'){ alert('Cannot delete main admin'); return; } if(!confirm('Delete user?')) return; State.users = State.users.filter(x=>x.id!==id); saveState(); renderEmployeesTable(); }
-
+    window.openEmployeeModal = function(id){
+      const u = State.users.find(x=>x.id===id) || {id:null, name:'', username:'', role:'user'};
+      showModal(`${u.id?'Edit':'New'} Employee`, `
+        <input id='u-name' placeholder='Full Name' value='${escapeHtml(u.name||'')}' /><input id='u-username' placeholder='Username' value='${escapeHtml(u.username||'')}' />
+        <input id='u-pass' placeholder='Password (leave blank to not change)' type='password' /><input id='u-pass-confirm' placeholder='Confirm Password' type='password' />
+        <select id='u-role'><option value='user'>User</option><option value='admin'>Admin</option></select>
+        <div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
+      `, async (modal)=>{
+        const name = modal.querySelector('#u-name').value.trim(); const username = modal.querySelector('#u-username').value.trim(); const role = modal.querySelector('#u-role').value; const pass = modal.querySelector('#u-pass').value; const passConfirm = modal.querySelector('#u-pass-confirm').value;
+        if(!name||!username){ alert('Name and username required'); return; }
+        if(!u.id && (!pass || pass !== passConfirm)){ alert('Passwords must match for new users'); return; }
+        if(u.id){ Object.assign(u,{name,username,role}); if(pass) u.passwordHash = await sha256Hex(pass); }
+        else { const hash = await sha256Hex(pass); State.users.push({id:pid('u'),username,passwordHash:hash,role,name}); }
+        saveState(); modal.remove(); renderAll();
+      });
+      if(u.role) $('u-role').value = u.role;
+    }
+    window.deleteEmployee = function(id){ if(State.users.find(u=>u.id===id).role==='admin' && State.users.filter(u=>u.role==='admin').length===1){ alert('Cannot delete the last admin user'); return; } if(!confirm('Delete employee?')) return; State.users = State.users.filter(x=>x.id!==id); saveState(); renderAll(); }
+    
     // --- Reports ---
     function renderReports(){
       const el = $('reports-page');
+      const totalSales = State.receipts.filter(r=>r.type!=='refund').reduce((s,r)=>s+r.total,0);
+      const totalRefunds = State.receipts.filter(r=>r.type==='refund').reduce((s,r)=>s+r.total,0);
+      const todaySales = State.receipts.filter(r=> isSameDay(new Date(r.date), new Date()) && r.type!=='refund').reduce((s,r)=>s+r.total,0);
+      const topSelling = State.receipts.reduce((agg, r) => { r.items.forEach(item => { if(!agg[item.name]) agg[item.name] = {qty:0, total:0}; agg[item.name].qty += item.qty; agg[item.name].total += item.qty * item.price; }); return agg; }, {});
+      const topSellingList = Object.entries(topSelling).sort(([,a],[,b])=>b.total-a.total);
+      
       el.innerHTML = `<h3>Reports</h3>
-        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-          <label class="small">From</label><input id="r-from" type="date" />
-          <label class="small">To</label><input id="r-to" type="date" />
-          <label class="small">Cashier</label><select id="r-cashier"><option value="all">All</option></select>
-          <button class="btn" id="r-filter">Filter</button>
-          <button class="btn secondary" id="r-export">Export Sales CSV</button>
+        <div class="grid cols-3">
+          <div class='card'>Total Sales<br/><strong>${formatCurrency(totalSales)}</strong></div>
+          <div class='card'>Total Refunds<br/><strong style='color:red'>${formatCurrency(totalRefunds)}</strong></div>
+          <div class='card'>Today's Sales<br/><strong>${formatCurrency(todaySales)}</strong></div>
         </div>
-        <div id="reports-content"></div>`;
-      populateCashierFilter();
-      document.getElementById('r-filter').onclick = filterReports;
-      document.getElementById('r-export').onclick = ()=>exportCSV('sales');
-      filterReports();
+        <div class="card">
+          <h4>Top Selling Products</h4>
+          <table><thead><tr><th>Product</th><th>Qty Sold</th><th>Total Revenue</th></tr></thead><tbody>
+          ${topSellingList.map(([name, data]) => `<tr><td>${escapeHtml(name)}</td><td>${data.qty}</td><td>${formatCurrency(data.total)}</td></tr>`).join('')}
+          </tbody></table>
+        </div>
+        <div class="card">
+          <h4>Sales History</h4>
+          <div id="sales-history-table"></div>
+        </div>`;
+      renderSalesHistoryTable();
     }
-    function populateCashierFilter(){ const sel = document.getElementById('r-cashier'); if(!sel) return; const opts = [{username:'all'}].concat(State.users.map(u=>({username:u.username,name:u.name}))); sel.innerHTML = opts.map(o=>`<option value='${o.username}'>${o.username==='all'?'All':escapeHtml(o.name||o.username)}</option>`).join(''); }
-    function filterReports(){ const from = document.getElementById('r-from').value ? new Date(document.getElementById('r-from').value) : null; const to = document.getElementById('r-to').value ? new Date(document.getElementById('r-to').value) : null; if(to) to.setHours(23,59,59,999); const cashier = document.getElementById('r-cashier').value; let list = State.receipts.slice(); if(from) list = list.filter(r=> new Date(r.date) >= from); if(to) list = list.filter(r=> new Date(r.date) <= to); if(cashier && cashier!=='all') list = list.filter(r=> r.cashier === cashier); renderReportsList(list); }
-    function renderReportsList(list){ const el = document.getElementById('reports-content'); let total = list.reduce((s,r)=>s+r.total,0); let html = `<div class='card'>Total: <strong>${formatCurrency(total)}</strong> • Receipts: <strong>${list.length}</strong></div>`; html += `<div style='margin-top:8px'><table><thead><tr><th>#</th><th>Date</th><th>Cashier</th><th>Method</th><th>Total</th></tr></thead><tbody>`; list.slice().reverse().forEach(r=> html += `<tr><td>${r.number}</td><td>${new Date(r.date).toLocaleString()}</td><td>${escapeHtml(r.cashierName)}</td><td>${escapeHtml(r.method||'')}</td><td>${formatCurrency(r.total)}</td></tr>`); html += `</tbody></table></div>`; const byCashier = {}; list.forEach(r=> byCashier[r.cashierName] = (byCashier[r.cashierName]||0)+r.total); html += `<div style='margin-top:10px'><h4>Sales by cashier</h4>` + Object.entries(byCashier).map(([k,v])=>`<div>${escapeHtml(k)}: <strong>${formatCurrency(v)}</strong></div>`).join('') + `</div>`; el.innerHTML = html; }
-    function exportCSV(type){ if(type==='products'){ const csv = 'SKU,Name,Category,Price,Stock\n' + State.products.map(p=>`${p.sku||''},${p.name},${p.category||''},${p.price},${p.stock}`).join('\n'); download(csv,'products.csv','text/csv'); } if(type==='sales'){ const csv = 'Number,Date,Cashier,Total\n' + State.receipts.map(r=>`${r.number},${r.date},${r.cashierName},${r.total}`).join('\n'); download(csv,'sales.csv','text/csv'); } }
-    function download(content, filename, type){ const blob = new Blob([content],{type}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
+    function renderSalesHistoryTable(){
+      const el = $('sales-history-table'); if(!el) return;
+      let html = `<table><thead><tr><th>Receipt #</th><th>Date</th><th>Cashier</th><th>Customer</th><th>Total</th><th>Actions</th></tr></thead><tbody>`;
+      State.receipts.slice().reverse().forEach(r => {
+        const customer = r.customerId ? State.customers.find(c=>c.id === r.customerId) : null;
+        html += `<tr><td>${r.number}</td><td>${new Date(r.date).toLocaleString()}</td><td>${r.cashierName}</td><td>${customer?escapeHtml(customer.name):'Walk-in'}</td><td style='${r.total<0?"color:red":""}'>${formatCurrency(r.total)}</td><td><button class='btn secondary' onclick='showReceipt(${JSON.stringify(r).replace(/'/g, "\\'")})'>View</button></td></tr>`;
+      });
+      html += `</tbody></table>`; el.innerHTML = html;
+    }
 
     // --- Z-Report ---
     function renderZReport(){
       const el = $('zreport-page');
-      var receipts = State.receipts.filter(r=> isSameDay(new Date(r.date), new Date()));
-      var totalSales = receipts.reduce((s,r)=>s+r.total,0);
-      var cashSales = receipts.filter(r=>r.method==='Cash').reduce((s,r)=>s+r.total,0);
-      var mpesaSales = receipts.filter(r=>r.method==='M-Pesa').reduce((s,r)=>s+r.total,0);
-      var totalReceipts = receipts.length;
-      var html = `<h3>Z-Report (Day End)</h3>
-      <div class='card'>Date: <strong>${(new Date()).toLocaleDateString()}</strong></div>
-      <div class='card'>Total Sales: <strong>${formatCurrency(totalSales)}</strong></div>
-      <div class='card'>Cash: <strong>${formatCurrency(cashSales)}</strong></div>
-      <div class='card'>M-Pesa: <strong>${formatCurrency(mpesaSales)}</strong></div>
-      <div class='card'>Receipts: <strong>${totalReceipts}</strong></div>
-      <button class="btn" id="zreport-print">Print Z-Report</button>`;
-      el.innerHTML = html;
-      document.getElementById('zreport-print').onclick = function(){ var win = window.open('', '_blank'); win.document.write('<pre>' + el.innerText + '</pre>'); win.print(); win.close(); };
+      el.innerHTML = `<h3>Z-Report</h3><p>Daily sales summary report. This should be run at the end of the day.</p><button class="btn" onclick="generateZReport()">Generate Today's Z-Report</button><div id="z-report-content" style="margin-top:12px"></div>`;
+    }
+    function generateZReport(){
+      const today = new Date();
+      const salesToday = State.receipts.filter(r => isSameDay(new Date(r.date), today));
+      const totalSales = salesToday.filter(r=>r.type!=='refund').reduce((sum, r) => sum + r.total, 0);
+      const totalRefunds = salesToday.filter(r=>r.type==='refund').reduce((sum, r) => sum + r.total, 0);
+      const cashierSales = salesToday.reduce((agg, r) => { if(!agg[r.cashierName]) agg[r.cashierName] = 0; agg[r.cashierName] += r.total; return agg; }, {});
+      const el = $('report-content');
+      el.innerHTML = `
+        <div style='text-align:center;margin-bottom:8px'><div class='logo' style='width:72px;height:72px;border-radius:999px;margin:0 auto;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900'>SB</div><div style='font-weight:900;font-size:18px;margin-top:8px'>${escapeHtml(State.settings.businessName||'SmartBizz')}</div><div class='small'>${escapeHtml(State.settings.address||'')}</div><div class='small'>VAT: ${escapeHtml(State.settings.vat||'')}</div></div>
+        <div style='text-align:center;font-weight:bold'>Z-Report for ${today.toLocaleDateString()}</div>
+        <div style='margin-top:12px;display:flex;justify-content:space-between'><span>Gross Sales:</span><span>${formatCurrency(totalSales)}</span></div>
+        <div style='display:flex;justify-content:space-between'><span>Refunds:</span><span style='color:red'>${formatCurrency(totalRefunds)}</span></div>
+        <hr>
+        <div style='display:flex;justify-content:space-between;font-weight:bold'><span>Net Sales:</span><span>${formatCurrency(totalSales + totalRefunds)}</span></div>
+        <h5 style='margin-top:12px;margin-bottom:0'>Sales by Cashier:</h5>
+        <div style='margin-top:4px'>
+          ${Object.entries(cashierSales).map(([cashier, sales]) => `<div style='display:flex;justify-content:space-between;font-size:12px;padding:2px 0'><span>${cashier}:</span><span>${formatCurrency(sales)}</span></div>`).join('')}
+        </div>
+        <div style='text-align:center;margin-top:12px;font-size:12px' class='small'>--- End of Report ---</div>
+        <div style='display:flex;gap:8px;justify-content:center;margin-top:10px'>
+          <button class='btn' id='printReport'>Print</button>
+        </div>
+      `;
+      $('printable-content').classList.remove('hidden');
+      $('receipt-content').style.display = 'none';
+      $('report-content').style.display = '';
+      showReceiptWidthSelector(false); // Reports are full-width, no selector needed
+      document.getElementById('printReport').onclick = ()=>{ window.print(); };
     }
 
     // --- Settings ---
     function renderSettings(){
       const el = $('settings-page');
+      const s = State.settings;
       el.innerHTML = `<h3>Settings</h3>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label class="small">Business name</label><input id="set-business" style="width:220px" />
-          <label class="small">Address</label><input id="set-address" style="width:220px" />
-          <label class="small">VAT / Tax reg</label><input id="set-vat" style="width:180px" />
-          <label class="small">Currency</label><input id="set-currency" value="KES" style="width:120px" />
-          <label class="small">Tax %</label><input id="set-tax" type="number" value="0" style="width:80px" />
-          <button class="btn" id="set-save">Save</button>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="btn secondary" id="set-backup">Download Backup (JSON)</button>
-          <button class="btn" id="set-restore">Restore Backup</button>
-          <button class="btn" id="set-reset">Factory Reset</button>
-        </div>
-      `;
-      document.getElementById('set-business').value = State.settings.businessName || '';
-      document.getElementById('set-address').value = State.settings.address || '';
-      document.getElementById('set-vat').value = State.settings.vat || '';
-      document.getElementById('set-currency').value = State.settings.currency || 'KES';
-      document.getElementById('set-tax').value = State.settings.taxPercent || 0;
-      document.getElementById('set-save').onclick = saveSettings;
-      document.getElementById('set-backup').onclick = downloadBackup;
-      document.getElementById('set-restore').onclick = restoreBackup;
-      document.getElementById('set-reset').onclick = resetSystem;
+        <div style='display:grid;gap:8px'>
+          <label>Business Name</label><input id='set-businessName' value='${escapeHtml(s.businessName||'')}' />
+          <label>Address</label><input id='set-address' value='${escapeHtml(s.address||'')}' />
+          <label>VAT/Tax No.</label><input id='set-vat' value='${escapeHtml(s.vat||'')}' />
+          <label>Currency</label><input id='set-currency' value='${escapeHtml(s.currency||'')}' />
+          <label>Tax Percent (%)</label><input id='set-taxPercent' type='number' value='${s.taxPercent||0}' />
+          <button class='btn' id='set-save'>Save Settings</button>
+        </div>`;
+      $('set-save').onclick = ()=>{
+        State.settings = {
+          businessName: $('set-businessName').value.trim(),
+          address: $('set-address').value.trim(),
+          vat: $('set-vat').value.trim(),
+          currency: $('set-currency').value.trim(),
+          taxPercent: Number($('set-taxPercent').value||0)
+        };
+        saveState();
+        alert('Settings saved!');
+        renderAll();
+      };
     }
-    function saveSettings(){ State.settings.businessName = document.getElementById('set-business').value.trim(); State.settings.address = document.getElementById('set-address').value.trim(); State.settings.vat = document.getElementById('set-vat').value.trim(); State.settings.currency = document.getElementById('set-currency').value.trim(); State.settings.taxPercent = Number(document.getElementById('set-tax').value||0); saveState(); alert('Settings saved'); renderAll(); }
-    function downloadBackup(){ download(JSON.stringify(State,null,2),'smartbizz-backup.json','application/json'); }
-    function restoreBackup(){ const inp = document.createElement('input'); inp.type='file'; inp.accept='.json'; inp.onchange = e=>{ const f = e.target.files[0]; const r = new FileReader(); r.onload = ev=>{ try{ const obj = JSON.parse(ev.target.result); if(confirm('Restore backup? This will overwrite current data.')){ State = obj; saveState(); location.reload(); } }catch(err){ alert('Invalid file'); } }; r.readAsText(f); }; inp.click(); }
-    function resetSystem(){ if(!confirm('Factory reset? This will erase all data.')) return; localStorage.removeItem(STORAGE_KEY); location.reload(); }
 
-    // --- Main render glue ---
-    function renderAll(){
-      renderDashboard();
-      renderPOS();
-      renderProducts();
-      renderInventory();
-      renderCustomers();
-      renderEmployees();
-      renderReports();
-      renderZReport();
-      renderSettings();
+    // --- CSV Functions (import/export) ---
+    function exportCSV(type){
+      let data;
+      let headers;
+      if(type === 'products'){
+        data = State.products;
+        headers = ['id','sku','name','category','price','stock'];
+      } else if(type === 'customers'){
+        data = State.customers;
+        headers = ['id','name','contact'];
+      } else {
+        alert('Invalid export type'); return;
+      }
+      const csv = [headers.join(',')].concat(data.map(row => headers.map(h => `"${(row[h]||'').toString().replace(/"/g, '""')}"`).join(','))).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${type}_export_${new Date().toISOString()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     }
-    // Show dashboard by default
-    showPage('dashboard');
-  </script>
-   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => {
-            console.log('Service worker registered!', reg);
-          })
-          .catch(err => {
-            console.error('Service worker registration failed:', err);
-          });
+    function importProductsCSV(){
+      const modal = showModal('Import Products', `
+        <p>Upload a CSV file with columns: sku,name,category,price,stock.</p>
+        <input type="file" id="import-file" accept=".csv" />
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+          <button class='btn' id='modal-save'>Import</button>
+          <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, (modal) => {
+        const file = modal.querySelector('#import-file').files[0];
+        if(!file){ alert('Please select a file'); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target.result;
+          const lines = text.split('\n').filter(l => l.trim() !== '');
+          const headers = lines[0].split(',').map(h=>h.trim());
+          const newProducts = [];
+          for(let i = 1; i < lines.length; i++){
+            const values = lines[i].split(',').map(v=>v.trim());
+            const p = {};
+            for(let j = 0; j < headers.length; j++){ p[headers[j]] = values[j]; }
+            if(p.sku && p.name && p.price){ newProducts.push({id:pid('p'), sku:p.sku, name:p.name, category:p.category, price:Number(p.price), stock:Number(p.stock||0)}); }
+          }
+          State.products = [...State.products, ...newProducts];
+          saveState();
+          modal.remove();
+          renderAll();
+          alert(`Imported ${newProducts.length} products.`);
+        };
+        reader.readAsText(file);
       });
     }
   </script>
 </body>
 </html>
-
-
