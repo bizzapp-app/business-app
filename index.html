@@ -255,6 +255,47 @@
   <script>
     // --- State and Storage ---
     const STORAGE_KEY = 'smartbizz_complete_v2';
+    
+    // --- Fine-Grained Permissions Definition ---
+    const DEFAULT_CASHIER_PERMISSIONS = [
+        'pos:view', 'pos:credit_sale', 'pos:discount'
+    ];
+    const AVAILABLE_PERMISSIONS = {
+        'Products': [
+            { key: 'products:view', label: 'View Products List' },
+            { key: 'products:edit', label: 'Add/Edit/Import Products' },
+            { key: 'products:delete', label: 'Delete Products' },
+        ],
+        'Inventory & Stock': [
+            { key: 'inventory:view', label: 'View Inventory/Stock' },
+            { key: 'inventory:adjust', label: 'Perform Stock Adjustments' },
+            { key: 'purchases:view', label: 'View Purchase Orders' },
+            { key: 'purchases:edit', label: 'Create/Receive Purchase Orders' },
+        ],
+        'Customers & Suppliers': [
+            { key: 'customers:view', label: 'View Customers' },
+            { key: 'customers:edit', label: 'Add/Edit Customers' },
+            { key: 'suppliers:view', label: 'View Suppliers' },
+            { key: 'suppliers:edit', label: 'Add/Edit Suppliers' },
+        ],
+        'Reports & Expenses': [
+            { key: 'reports:view', label: 'View Reports/Z-Report' },
+            { key: 'expenses:view', label: 'View Expenses' },
+            { key: 'expenses:edit', label: 'Add/Edit/Delete Expenses' },
+            { key: 'activitylog:view', label: 'View Activity Log' },
+        ],
+        'POS Functions (Cashier)': [
+            { key: 'pos:view', label: 'Access POS (Selling)' },
+            { key: 'pos:price_override', label: 'Override Sale Price' },
+            { key: 'pos:discount', label: 'Apply Manual Discount' },
+            { key: 'pos:add_product', label: 'Add New Product (from POS)' },
+            { key: 'pos:credit_sale', label: 'Process "On Credit" Sales' }
+        ],
+        'User Management': [
+            { key: 'users:manage', label: 'Manage Employees' }
+        ]
+    };
+    
     const defaultState = {
       nextReceipt: 1001,
       nextPurchase: 1,
@@ -284,7 +325,7 @@
       }
       try{
         const state = JSON.parse(raw);
-        // Ensure new fields exist for backward compatibility
+        // Ensure new fields exist for backward compatibility and enforce permissions
         state.purchases = state.purchases || [];
         state.expenses = state.expenses || [];
         state.activityLog = state.activityLog || [];
@@ -297,6 +338,13 @@
         state.customers = state.customers.map(c => {
             c.creditBalance = c.creditBalance || 0; 
             return c;
+        });
+        state.users = state.users.map(u => {
+            if (u.role === 'cashier' && !u.permissions) {
+                // Assign default permissions to existing cashiers without the field
+                u.permissions = DEFAULT_CASHIER_PERMISSIONS;
+            }
+            return u;
         });
         return state;
       }catch(e){
@@ -318,6 +366,15 @@
     function formatCurrency(v){ return (State.settings.currency||'KES') + ' ' + Number(v||0).toLocaleString('en-US', {minimumFractionDigits: 2}); }
     function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
 
+    // --- Permissions Check Helper ---
+    function hasPermission(permissionKey) {
+        if (!currentUser) return false;
+        // Admins have all permissions
+        if (currentUser.role === 'admin') return true;
+        // Check if the permission key is in the cashier's permission list
+        return currentUser.permissions && currentUser.permissions.includes(permissionKey);
+    }
+    
     // --- Hashing, Activity Log, Toast System, Authentication ---
     async function sha256Hex(text){
       const enc = new TextEncoder();
@@ -412,7 +469,7 @@
         const password = $('password').value;
         if(!name || !username || !password){ showToast('Please fill all fields', 'error'); return; }
         const hashedPassword = await sha256Hex(password);
-        const newUser = { id: pid('u'), name, username, password: hashedPassword, role: 'admin' };
+        const newUser = { id: pid('u'), name, username, password: hashedPassword, role: 'admin', permissions: [] };
         State.users.push(newUser);
         saveState();
         showToast('Admin user registered successfully! Please login.', 'success');
@@ -464,13 +521,56 @@
     }
     // --- END FACTORY RESET FUNCTION ---
 
+    // Refactored to use the granular permissions
     function applyRole(){
-        if (!currentUser || currentUser.role === 'cashier') {
-            document.querySelectorAll('nav button[data-page]:not([data-page="pos"]):not([data-page="dashboard"])').forEach(b => b.classList.add('hidden'));
-            document.getElementById('pos-add-product')?.classList.add('hidden');
+        // Get all navigation buttons except Dashboard
+        const navButtons = document.querySelectorAll('nav button[data-page]:not([data-page="dashboard"])');
+        
+        navButtons.forEach(b => b.classList.add('hidden'));
+
+        // Admin always sees everything
+        if (currentUser && currentUser.role === 'admin') {
+            navButtons.forEach(b => b.classList.remove('hidden'));
         } else {
-            document.querySelectorAll('nav button[data-page]').forEach(b => b.classList.remove('hidden'));
-            document.getElementById('pos-add-product')?.classList.remove('hidden');
+            // Permission mapping for navigation
+            const navMap = {
+                'pos': 'pos:view',
+                'products': 'products:view',
+                'inventory': 'inventory:view',
+                'suppliers': 'suppliers:view',
+                'purchases': 'purchases:view',
+                'expenses': 'expenses:view',
+                'customers': 'customers:view',
+                'employees': 'users:manage',
+                'reports': 'reports:view',
+                'zreport': 'reports:view',
+                'activitylog': 'activitylog:view',
+                'settings': 'settings:manage' // New permission for settings
+            };
+
+            document.querySelector('nav button[data-page="dashboard"]').classList.remove('hidden'); // Dashboard is always visible
+
+            navButtons.forEach(b => {
+                const page = b.getAttribute('data-page');
+                const requiredPermission = navMap[page];
+                
+                // Allow POS if either pos:view or pos:credit_sale/pos:discount are present (default cashier experience)
+                if (page === 'pos' && hasPermission('pos:view')) {
+                    b.classList.remove('hidden');
+                } else if (requiredPermission && hasPermission(requiredPermission)) {
+                    b.classList.remove('hidden');
+                }
+            });
+        }
+        
+        // POS-specific button visibility
+        const addProductBtn = document.getElementById('pos-add-product');
+        if (addProductBtn) {
+            if (hasPermission('pos:add_product')) {
+                addProductBtn.classList.remove('hidden');
+            } else {
+                addProductBtn.classList.add('hidden');
+            }
         }
     }
     function toggleDarkMode(isInit = false) {
@@ -506,38 +606,47 @@
       document.getElementById(pg+'-page').classList.remove('hidden');
       document.querySelectorAll('nav button[data-page]').forEach(b=>b.classList.remove('active'));
       document.querySelector('nav button[data-page="'+pg+'"]').classList.add('active');
+    
+      // Render the page only if the user has permission (or is admin).
+      // This prevents rendering content on hidden pages.
+      if (!hasPermission('settings:manage') && pg === 'settings') {
+          document.getElementById(pg + '-page').innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view settings.</p>';
+          return;
+      }
+
+      // Close menu if it is open (for mobile users)
+      if(document.body.classList.contains('menu-open')) {
+          document.body.classList.remove('menu-open');
+      }
+
+      switch(pg){
+          case 'dashboard': renderDashboard(); break;
+          case 'pos': renderPOS(); break;
+          case 'products': renderProducts(); break;
+          case 'inventory': renderInventory(); break;
+          case 'suppliers': renderSuppliers(); break;
+          case 'purchases': renderPurchases(); break;
+          case 'expenses': renderExpenses(); break;
+          case 'customers': renderCustomers(); break;
+          case 'employees': renderEmployees(); break;
+          case 'reports': renderReports(); break;
+          case 'zreport': renderZReport(); break;
+          case 'activitylog': renderActivityLog(); break;
+          case 'settings': renderSettings(); break;
+      }
     }
     document.querySelectorAll('nav button[data-page]').forEach(b=>{
       b.onclick = function(){ 
-        const page = this.getAttribute('data-page');
-        showPage(page);
-        
-        // Close menu if it is open (for mobile users)
-        if(document.body.classList.contains('menu-open')) {
-            document.body.classList.remove('menu-open');
-        }
-
-        switch(page){
-            case 'dashboard': renderDashboard(); break;
-            case 'pos': renderPOS(); break;
-            case 'products': renderProducts(); break;
-            case 'inventory': renderInventory(); break;
-            case 'suppliers': renderSuppliers(); break;
-            case 'purchases': renderPurchases(); break;
-            case 'expenses': renderExpenses(); break;
-            case 'customers': renderCustomers(); break;
-            case 'employees': renderEmployees(); break;
-            case 'reports': renderReports(); break;
-            case 'zreport': renderZReport(); break;
-            case 'activitylog': renderActivityLog(); break;
-            case 'settings': renderSettings(); break;
-        }
+        showPage(this.getAttribute('data-page'));
       };
     });
 
     // --- Main app rendering and modal system ---
     function renderAll(){
-      renderDashboard(); renderPOS(); renderProducts(); renderInventory(); renderSuppliers(); renderPurchases(); renderExpenses(); renderCustomers(); renderEmployees(); renderReports(); renderZReport(); renderActivityLog(); renderSettings(); applyRole();
+      // Only render the currently active page and apply role
+      const activePage = document.querySelector('nav button.active')?.getAttribute('data-page') || 'dashboard';
+      applyRole();
+      showPage(activePage); 
     }
 
     // Centralized modal system (Responsive by default via CSS)
@@ -615,6 +724,11 @@
 
     // --- Price Override Modal ---
     window.openPriceOverrideModal = function(itemIndex, currentPrice) {
+        if (!hasPermission('pos:price_override')) {
+            showToast('Permission denied. Cannot override price.', 'error');
+            return;
+        }
+
         const item = Cart[itemIndex];
         if (!item) return;
 
@@ -642,12 +756,10 @@
     function renderCart(){
         const listEl = $('cart-list');
         const totalEl = $('cart-total');
-        
-        const subtotal = Cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-        const discount = getCartDiscount(subtotal);
-        const taxableAmount = subtotal - discount;
-        const tax = taxableAmount * (State.settings.taxPercent / 100);
-        const total = taxableAmount + tax;
+        const canOverridePrice = hasPermission('pos:price_override');
+        const canApplyDiscount = hasPermission('pos:discount');
+        const canCreditSale = hasPermission('pos:credit_sale');
+
         
         listEl.innerHTML = Cart.map((item, index) => `
             <div style="display:grid;grid-template-columns:1fr 80px 100px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border)">
@@ -662,31 +774,67 @@
                 </div>
                 <div style="text-align:right">
                     ${formatCurrency(item.price * item.qty)}
-                    <button onclick="openPriceOverrideModal(${index}, ${item.price})" class="btn secondary" style="padding:2px 4px;font-size:10px;margin-left:4px">Override</button>
+                    ${canOverridePrice ? `<button onclick="openPriceOverrideModal(${index}, ${item.price})" class="btn secondary" style="padding:2px 4px;font-size:10px;margin-left:4px">Override</button>` : ''}
                 </div>
             </div>
         `).join('') || '<div class="small" style="padding:10px;text-align:center">Cart is empty.</div>';
+
+        const subtotal = Cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+        const discount = getCartDiscount(subtotal);
+        const taxableAmount = subtotal - discount;
+        const tax = taxableAmount * (State.settings.taxPercent / 100);
+        const total = taxableAmount + tax;
+
+        // Discount input visibility controlled by permission
+        const discountInputHtml = canApplyDiscount ? 
+            `<div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+              <label class="small">Discount</label>
+              <input id="cart-discount" type="number" min="0" value="0" style="width:70px" title="Discount in currency" oninput="renderCart()" />
+              <label class="small">%</label>
+              <input id="cart-discount-pct" type="number" min="0" max="100" value="0" style="width:55px" title="Discount in percent" oninput="renderCart()" />
+            </div>` : 
+            `<input id="cart-discount" type="hidden" value="0" /><input id="cart-discount-pct" type="hidden" value="0" />
+            <div style="display:none">Discount controls hidden</div>`;
 
         totalEl.innerHTML = `
             <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted)"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--error)"><span>Discount:</span><span>-${formatCurrency(discount)}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted)"><span>Tax (${State.settings.taxPercent}%):</span><span>${formatCurrency(tax)}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:800;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;"><span>Total:</span><span id="final-total">${formatCurrency(total)}</span></div>
+            ${discountInputHtml}
         `;
+        
+        // Ensure On Credit option is available only with permission
+        const paymentSelect = document.getElementById('cart-payment');
+        if (paymentSelect) {
+             const creditOption = paymentSelect.querySelector('option[value="On Credit"]');
+             if (creditOption) {
+                 if (canCreditSale) {
+                     creditOption.style.display = 'block';
+                 } else {
+                     creditOption.style.display = 'none';
+                     // If credit was selected, switch to cash
+                     if (paymentSelect.value === 'On Credit') {
+                         paymentSelect.value = 'Cash';
+                     }
+                 }
+             }
+        }
     }
     function getCartDiscount(subtotal) {
-        const discVal = Number($('cart-discount').value) || 0;
-        const discPct = Number($('cart-discount-pct').value) || 0;
+        const discValEl = $('cart-discount');
+        const discPctEl = $('cart-discount-pct');
+        
+        const discVal = Number(discValEl ? discValEl.value : 0) || 0;
+        const discPct = Number(discPctEl ? discPctEl.value : 0) || 0;
         
         let discount = 0;
         if (discVal > 0) {
             discount = discVal;
-            // Clear percent field if value is used
-            $('cart-discount-pct').value = 0; 
+            if(discPctEl) discPctEl.value = 0; 
         } else if (discPct > 0) {
             discount = subtotal * (discPct / 100);
-            // Clear value field if percent is used
-            $('cart-discount').value = 0;
+            if(discValEl) discValEl.value = 0;
         }
         return discount;
     }
@@ -701,6 +849,12 @@
         const total = taxableAmount + tax;
         const paymentMethod = $('cart-payment').value;
         const customerId = $('cart-customer').value;
+
+        // Permission check for credit sale at checkout
+        if (paymentMethod === 'On Credit' && !hasPermission('pos:credit_sale')) {
+            showToast('Permission denied. Cannot process "On Credit" sales.', 'error');
+            return;
+        }
 
         showModal('Complete Sale', `
             <div style="font-size:24px;font-weight:700;margin-bottom:12px">Total Due: ${formatCurrency(total)}</div>
@@ -937,8 +1091,8 @@
                 <h4>Quick Access</h4>
                 <div class="grid cols-3">
                     <button class="btn" onclick="showPage('pos')">🛒 New Sale</button>
-                    <button class="btn secondary" onclick="openProductModal()">+ New Product</button>
-                    <button class="btn secondary" onclick="showPage('inventory')">📦 Stock Check</button>
+                    ${hasPermission('products:edit') ? `<button class="btn secondary" onclick="openProductModal()">+ New Product</button>` : ''}
+                    ${hasPermission('inventory:view') ? `<button class="btn secondary" onclick="showPage('inventory')">📦 Stock Check</button>` : ''}
                 </div>
             </div>
         `;
@@ -964,16 +1118,15 @@
             <div id="cart-list" style="min-height:80px"></div>
             <div style="display:flex;gap:8px;margin-top:8px">
               <select id="cart-customer"><option value="">Walk-in Customer</option></select>
-              <button class="btn secondary" id="add-new-customer-btn">+ New</button>
+              ${hasPermission('customers:edit') ? `<button class="btn secondary" id="add-new-customer-btn">+ New</button>` : ''}
             </div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <select id="cart-payment"><option>Cash</option><option>M-Pesa</option><option>Card</option><option>On Credit</option></select>
-            </div>
-            <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-              <label class="small">Discount</label>
-              <input id="cart-discount" type="number" min="0" value="0" style="width:70px" title="Discount in currency" />
-              <label class="small">%</label>
-              <input id="cart-discount-pct" type="number" min="0" max="100" value="0" style="width:55px" title="Discount in percent" />
+              <select id="cart-payment">
+                <option>Cash</option>
+                <option>M-Pesa</option>
+                <option>Card</option>
+                <option value="On Credit" style="display:none">On Credit</option>
+              </select>
             </div>
             <div id="cart-total" style="margin-top:12px;">KES 0</div>
             <div style="margin-top:12px;display:flex;gap:8px">
@@ -995,8 +1148,6 @@
       };
       document.getElementById('pos-category').onchange = function(){ renderCatalog(document.getElementById('pos-search').value); };
       document.getElementById('pos-add-product').onclick = ()=>openProductModal();
-      document.getElementById('cart-discount').oninput = renderCart;
-      document.getElementById('cart-discount-pct').oninput = renderCart;
       document.getElementById('cart-checkout').onclick = startCheckout;
       document.getElementById('cart-clear').onclick = clearCart;
       document.getElementById('cart-drawer').onclick = openCashDrawer;
@@ -1009,6 +1160,8 @@
     function renderProductsTable(){ 
       const el = $('products-table'); 
       if(!el) return; 
+      const canEdit = hasPermission('products:edit');
+      const canDelete = hasPermission('products:delete');
       let html = `<div class="table-responsive"><table><thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Reorder</th><th>Actions</th></tr></thead><tbody>`; 
       State.products.forEach(p=>{ 
         html += `<tr>
@@ -1019,38 +1172,56 @@
           <td>${formatCurrency(p.costPrice||0)}</td>
           <td style='${p.stock<=(p.reorderPoint||5)?"color:var(--error)":""}'>${p.stock}</td>
           <td>${p.reorderPoint||5}</td>
-          <td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openProductModal("${p.id}")'>Edit</button> <button class='btn danger' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td>
+          <td>
+            ${canEdit ? `<button class='btn secondary' onclick='openProductModal("${p.id}")'>Edit</button>` : ''} 
+            ${canDelete ? `<button class='btn danger' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}
+          </td>
         </tr>`; 
       }); 
       html += `</tbody></table></div>`; // Closing the table-responsive div
       el.innerHTML = html; 
     }
-    window.deleteProduct = function(id){ if(!confirm('Delete product?')) return; State.products = State.products.filter(x=>x.id!==id); saveState(); renderAll(); logActivity('product_deleted', { id }); }
+    window.deleteProduct = function(id){ 
+        if(!hasPermission('products:delete')) return showToast('Permission denied.', 'error'); 
+        if(!confirm('Delete product?')) return; 
+        State.products = State.products.filter(x=>x.id!==id); 
+        saveState(); 
+        renderAll(); 
+        logActivity('product_deleted', { id }); 
+    }
     function renderProducts(){ 
       const el = $('products-page'); 
+      if (!hasPermission('products:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view products.</p>'; return; }
+      
+      const canEdit = hasPermission('products:edit');
+      
       el.innerHTML = `<h3>Products</h3> 
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
-          <button class="btn" id="prod-new">+ New Product</button> 
-          <button class="btn secondary" id="prod-export" onclick='exportCSV("products")'>Export CSV</button> 
-          <button class="btn secondary" id="prod-import" onclick='importProductsCSV()'>Import CSV</button> 
+          ${canEdit ? `<button class="btn" id="prod-new">+ New Product</button>` : ''}
+          ${canEdit ? `<button class="btn secondary" id="prod-export" onclick='exportCSV("products")'>Export CSV</button>` : ''}
+          ${canEdit ? `<button class="btn secondary" id="prod-import" onclick='importProductsCSV()'>Import CSV</button>` : ''}
         </div> 
         <div id="products-table"></div>`; 
       renderProductsTable(); 
-      document.getElementById('prod-new').onclick = ()=>openProductModal(); 
+      if (canEdit) document.getElementById('prod-new').onclick = ()=>openProductModal(); 
     }
     
     // Inventory
     function renderInventory(){
         const el = $('inventory-page');
+        if (!hasPermission('inventory:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view inventory.</p>'; return; }
+
+        const canAdjust = hasPermission('inventory:adjust');
+        
         el.innerHTML = `<h3>Inventory Management</h3>
             <p>Monitor current stock levels and perform stock adjustments.</p>
             <div style="display:flex;gap:8px;margin-bottom:8px">
-                <button class="btn" id="stock-adjust">+ Stock Adjustment</button>
+                ${canAdjust ? `<button class="btn" id="stock-adjust">+ Stock Adjustment</button>` : ''}
             </div>
             <h4>Stock Levels & Low Stock Alert</h4>
             <div id="inventory-list"></div>`;
         
-        $('stock-adjust').onclick = openStockAdjustmentModal;
+        if (canAdjust) $('stock-adjust').onclick = openStockAdjustmentModal;
         renderInventoryList();
     }
     function renderInventoryList(){
@@ -1077,31 +1248,39 @@
     // Suppliers
     function renderSuppliers(){
       const el = $('suppliers-page');
+      if (!hasPermission('suppliers:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view suppliers.</p>'; return; }
+
+      const canEdit = hasPermission('suppliers:edit');
+
       el.innerHTML = `<h3>Suppliers</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
-          <button class="btn" id="supp-new">+ New Supplier</button>
+          ${canEdit ? `<button class="btn" id="supp-new">+ New Supplier</button>` : ''}
         </div>
         <div id="suppliers-table"></div>`;
       const table = $('suppliers-table');
       // Table is wrapped in .table-responsive
       table.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>
-        ${State.suppliers.map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.contact||''}</td><td><button class='btn secondary' onclick='openSupplierModal("${s.id}")'>Edit</button> <button class='btn danger' onclick='deleteSupplier("${s.id}")'>Delete</button></td></tr>`).join('')}
+        ${State.suppliers.map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.contact||''}</td><td>${canEdit ? `<button class='btn secondary' onclick='openSupplierModal("${s.id}")'>Edit</button> <button class='btn danger' onclick='deleteSupplier("${s.id}")'>Delete</button>` : ''}</td></tr>`).join('')}
       </tbody></table></div>`;
-      $('supp-new').onclick = ()=>openSupplierModal();
+      if (canEdit) $('supp-new').onclick = ()=>openSupplierModal();
     }
     
     // Purchases / Stock In
     function renderPurchases(){
         const el = $('purchases-page');
+        if (!hasPermission('purchases:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view purchases.</p>'; return; }
+        
+        const canEdit = hasPermission('purchases:edit');
+
         el.innerHTML = `<h3>Purchases (Stock In)</h3>
           <p>Track incoming stock and cost prices via Purchase Orders.</p>
           <div style="display:flex;gap:8px;margin-bottom:8px">
-            <button class="btn" id="po-new">+ Create New PO</button>
+            ${canEdit ? `<button class="btn" id="po-new">+ Create New PO</button>` : ''}
           </div>
           <h4>Recent Purchase Orders</h4>
           <div id="purchases-table"></div>`;
         
-        $('po-new').onclick = ()=>openPurchaseOrderModal();
+        if (canEdit) $('po-new').onclick = ()=>openPurchaseOrderModal();
         
         const table = $('purchases-table');
         // Table is wrapped in .table-responsive
@@ -1113,7 +1292,7 @@
               <td>${new Date(p.date).toLocaleDateString()}</td>
               <td>${formatCurrency(p.totalCost)}</td>
               <td><strong style='color:${p.status === 'Received' ? 'var(--success)' : 'var(--error)'}'>${p.status}</strong></td>
-              <td><button class='btn secondary' onclick='openPurchaseOrderModal("${p.id}")'>View/Receive</button></td>
+              <td>${canEdit ? `<button class='btn secondary' onclick='openPurchaseOrderModal("${p.id}")'>View/Receive</button>` : 'View'}</td>
             </tr>
           `).join('')}
         </tbody></table></div>`;
@@ -1122,15 +1301,19 @@
     // Expenses
     function renderExpenses(){
         const el = $('expenses-page');
+        if (!hasPermission('expenses:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view expenses.</p>'; return; }
+
+        const canEdit = hasPermission('expenses:edit');
+        
         el.innerHTML = `<h3>Business Expenses</h3>
             <p>Record operational expenses.</p>
             <div style="display:flex;gap:8px;margin-bottom:8px">
-                <button class="btn" id="exp-new">+ New Expense</button>
+                ${canEdit ? `<button class="btn" id="exp-new">+ New Expense</button>` : ''}
             </div>
             <h4>Expense List</h4>
             <div id="expenses-table"></div>`;
         
-        $('exp-new').onclick = ()=>openExpenseModal();
+        if (canEdit) $('exp-new').onclick = ()=>openExpenseModal();
         
         const table = $('expenses-table');
         // Table is wrapped in .table-responsive
@@ -1141,7 +1324,7 @@
               <td>${escapeHtml(e.category)}</td>
               <td>${escapeHtml(e.description)}</td>
               <td>${formatCurrency(e.amount)}</td>
-              <td><button class='btn secondary' onclick='openExpenseModal("${e.id}")'>Edit</button> <button class='btn danger' onclick='deleteExpense("${e.id}")'>Delete</button></td>
+              <td>${canEdit ? `<button class='btn secondary' onclick='openExpenseModal("${e.id}")'>Edit</button> <button class='btn danger' onclick='deleteExpense("${e.id}")'>Delete</button>` : ''}</td>
             </tr>
           `).join('')}
         </tbody></table></div>`;
@@ -1151,42 +1334,54 @@
     function renderCustomersTable(){ 
         const el = $('customers-table'); 
         if(!el) return; 
+        const canEdit = hasPermission('customers:edit');
+
         let html = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Contact</th><th>Credit</th><th>Actions</th></tr></thead><tbody>`; 
         State.customers.forEach(c=>{ 
-            html += `<tr><td>${escapeHtml(c.name)}</td><td>${c.contact||''}</td><td><span style='color:${c.creditBalance > 0 ? 'var(--error)' : 'var(--success)'}'>${formatCurrency(c.creditBalance)}</span></td><td><button class='btn secondary' onclick='openCustomerModal("${c.id}")'>Edit</button> <button class='btn danger' onclick='deleteCustomer("${c.id}")'>Delete</button></td></tr>`; 
+            html += `<tr><td>${escapeHtml(c.name)}</td><td>${c.contact||''}</td><td><span style='color:${c.creditBalance > 0 ? 'var(--error)' : 'var(--success)'}'>${formatCurrency(c.creditBalance)}</span></td><td>${canEdit ? `<button class='btn secondary' onclick='openCustomerModal("${c.id}")'>Edit</button> <button class='btn danger' onclick='deleteCustomer("${c.id}")'>Delete</button>` : ''}</td></tr>`; 
         }); 
         html += `</tbody></table></div>`; // Closing the table-responsive div
         el.innerHTML = html; 
     }
     function renderCustomers(){ 
       const el = $('customers-page'); 
+      if (!hasPermission('customers:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view customers.</p>'; return; }
+
+      const canEdit = hasPermission('customers:edit');
+
       el.innerHTML = `<h3>Customers</h3> 
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
-          <button class="btn" id="cust-new">+ New Customer</button> 
+          ${canEdit ? `<button class="btn" id="cust-new">+ New Customer</button>` : ''}
           <button class="btn secondary" id="cust-export" onclick='exportCSV("customers")'>Export CSV</button> 
         </div> 
         <div id="customers-table"></div>`; 
       renderCustomersTable(); 
-      document.getElementById('cust-new').onclick = ()=>openCustomerModal(); 
+      if (canEdit) document.getElementById('cust-new').onclick = ()=>openCustomerModal(); 
     }
 
     // Employees (Users)
     function renderEmployeesTable(){ 
       const el = $('employees-table');
       if(!el) return;
+      
+      const canManage = hasPermission('users:manage');
       let html = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
       State.users.forEach(u => {
         html += `<tr>
             <td>${escapeHtml(u.name || '')}</td>
             <td>${escapeHtml(u.username)}</td>
             <td>${u.role.toUpperCase()}</td>
-            <td><button class='btn secondary' onclick='openEmployeeModal("${u.id}")'>Edit</button> ${u.id !== currentUser.id ? `<button class='btn danger' onclick='deleteEmployee("${u.id}")'>Delete</button>` : ''}</td>
+            <td>
+                ${canManage ? `<button class='btn secondary' onclick='openEmployeeModal("${u.id}")'>Edit</button>` : ''} 
+                ${canManage && u.id !== currentUser.id ? `<button class='btn danger' onclick='deleteEmployee("${u.id}")'>Delete</button>` : ''}
+            </td>
         </tr>`;
       });
       html += `</tbody></table></div>`; // Closing the table-responsive div
       el.innerHTML = html;
     }
     window.deleteEmployee = function(id){ 
+      if(!hasPermission('users:manage')) return showToast('Permission denied.', 'error'); 
       if(!confirm('Delete this employee?')) return; 
       State.users = State.users.filter(x => x.id !== id); 
       saveState(); 
@@ -1195,6 +1390,8 @@
     }
     function renderEmployees(){ 
       const el = $('employees-page'); 
+      if (!hasPermission('users:manage')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to manage employees.</p>'; return; }
+
       el.innerHTML = `<h3>Employees</h3> 
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
           <button class="btn" id="emp-new">+ New Employee</button> 
@@ -1207,6 +1404,8 @@
     // Reports
     function renderReports(){
         const el = $('reports-page');
+        if (!hasPermission('reports:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view reports.</p>'; return; }
+
         const salesData = State.receipts.map(r => ({
             date: new Date(r.date).toLocaleDateString(),
             total: r.total,
@@ -1308,6 +1507,8 @@
     // Z-Report
     function renderZReport(){
         const el = $('zreport-page');
+        if (!hasPermission('reports:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view Z-Reports.</p>'; return; }
+
         const now = new Date();
         const totalSales = State.receipts.reduce((s,r)=>s+r.total, 0);
         const totalProfit = State.receipts.reduce((s,r)=>s+r.items.reduce((s,i)=>s+(i.profit||0),0), 0);
@@ -1351,16 +1552,19 @@
                     `).join('')}
                 </tbody></table></div>
             </div>
-            <button class='btn danger' onclick='promptForZReportLock()'>Finalize Z-Report and Reset Daily Data (Simulation)</button>
+            ${hasPermission('users:manage') ? `<button class='btn danger' onclick='promptForZReportLock()'>Finalize Z-Report and Reset Daily Data (Simulation)</button>` : ''}
         `;
     }
     window.promptForZReportLock = function(){
+        if(!hasPermission('users:manage')) return showToast('Permission denied.', 'error');
         showToast('Z-Report finalization is a critical operation. In a real system, this would lock the sales period and potentially involve a final cash reconciliation.', 'info', 5000);
     }
     
     // Activity Log
     function renderActivityLog(){
         const el = $('activitylog-page');
+        if (!hasPermission('activitylog:view')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to view the activity log.</p>'; return; }
+
         el.innerHTML = `<h3>Activity Log</h3>
             <p>Recent system and user actions. (Showing last ${State.activityLog.length} entries)</p>
             <div id="activity-list"></div>`;
@@ -1380,8 +1584,10 @@
 
     // Settings
     function renderSettings(){
-        const s = State.settings;
         const el = $('settings-page');
+        if (!hasPermission('settings:manage')) { el.innerHTML = '<h3>Access Denied</h3><p>You do not have permission to manage settings.</p>'; return; }
+        
+        const s = State.settings;
         el.innerHTML = `<h3>Settings</h3>
             <h4>Business Details & General</h4>
             <div class="grid cols-3" style="max-width:800px">
@@ -1408,6 +1614,8 @@
     }
 
     function saveSettings(){
+        if (!hasPermission('settings:manage')) return showToast('Permission denied.', 'error');
+        
         State.settings.businessName = $('set-name').value;
         State.settings.address = $('set-address').value;
         State.settings.vat = $('set-vat').value;
@@ -1422,6 +1630,11 @@
 
     // --- CSV Export/Import ---
     function exportCSV(type) {
+        if (type === 'products' && !hasPermission('products:edit')) return showToast('Permission denied.', 'error');
+        // Customers export generally allowed if they can view, but for consistency, check for edit/manage
+        if (type === 'customers' && !hasPermission('customers:edit')) return showToast('Permission denied.', 'error');
+
+        // ... (rest of exportCSV function is unchanged)
       let data, headers, fileName;
       if (type === 'products') {
         data = State.products.map(p => ({ 
@@ -1475,6 +1688,8 @@
     }
 
     window.importProductsCSV = function() {
+        if(!hasPermission('products:edit')) return showToast('Permission denied.', 'error');
+        // ... (rest of importProductsCSV is unchanged)
       showModal('Import Products', `
         <p>Upload a CSV file with columns: <strong>sku, name, category, price, stock, costPrice, reorderPoint</strong>. Only the first three are mandatory.</p>
         <input type="file" id="import-file" accept=".csv" />
@@ -1492,7 +1707,7 @@
           const headers = lines[0].toLowerCase().split(',').map(h=>h.trim());
           const newProducts = [];
           for(let i = 1; i < lines.length; i++){
-            const values = lines[i].split(',').map(v=>v.trim());
+            const values = lines[i].split(',').map(v=>v.trim().replace(/"/g, '')); // Remove surrounding quotes from CSV fields
             const p = {};
             for(let j = 0; j < headers.length; j++){ p[headers[j]] = values[j]; }
             
@@ -1527,6 +1742,7 @@
 
     // --- Modals (CRUD forms) ---
     function openProductModal(id = null){
+        if(!hasPermission('products:edit')) return showToast('Permission denied. Cannot edit products.', 'error');
       const p = id ? State.products.find(x=>x.id===id) : {};
       showModal(`${id ? 'Edit' : 'New'} Product`, `
         <div class="grid cols-3">
@@ -1573,6 +1789,7 @@
     }
     
     function openSupplierModal(id = null){
+        if(!hasPermission('suppliers:edit')) return showToast('Permission denied. Cannot edit suppliers.', 'error');
       const s = id ? State.suppliers.find(x=>x.id===id) : {};
       showModal(`${id ? 'Edit' : 'New'} Supplier`, `
         <div class="grid cols-3" style="grid-template-columns: 1fr;">
@@ -1600,9 +1817,17 @@
         closeModal();
       });
     }
-    window.deleteSupplier = function(id){ if(!confirm('Delete supplier?')) return; State.suppliers = State.suppliers.filter(x=>x.id!==id); saveState(); renderSuppliers(); logActivity('supplier_deleted', { id }); }
+    window.deleteSupplier = function(id){ 
+        if(!hasPermission('suppliers:edit')) return showToast('Permission denied.', 'error');
+        if(!confirm('Delete supplier?')) return; 
+        State.suppliers = State.suppliers.filter(x=>x.id!==id); 
+        saveState(); 
+        renderSuppliers(); 
+        logActivity('supplier_deleted', { id }); 
+    }
 
     function openExpenseModal(id = null){
+        if(!hasPermission('expenses:edit')) return showToast('Permission denied. Cannot edit expenses.', 'error');
         const e = id ? State.expenses.find(x=>x.id===id) : {};
         showModal(`${id ? 'Edit' : 'New'} Expense`, `
             <div class="grid cols-3" style="grid-template-columns: 1fr;">
@@ -1635,9 +1860,17 @@
             closeModal();
         });
     }
-    window.deleteExpense = function(id){ if(!confirm('Delete expense?')) return; State.expenses = State.expenses.filter(x=>x.id!==id); saveState(); renderExpenses(); logActivity('expense_deleted', { id }); }
+    window.deleteExpense = function(id){ 
+        if(!hasPermission('expenses:edit')) return showToast('Permission denied.', 'error');
+        if(!confirm('Delete expense?')) return; 
+        State.expenses = State.expenses.filter(x=>x.id!==id); 
+        saveState(); 
+        renderExpenses(); 
+        logActivity('expense_deleted', { id }); 
+    }
 
     function openCustomerModal(id = null){
+        if(!hasPermission('customers:edit')) return showToast('Permission denied. Cannot edit customers.', 'error');
       const c = id ? State.customers.find(x=>x.id===id) : {};
       showModal(`${id ? 'Edit' : 'New'} Customer`, `
         <div class="grid cols-3" style="grid-template-columns: 1fr;">
@@ -1669,16 +1902,42 @@
       });
     }
     window.deleteCustomer = function(id){ 
-      if(!confirm('Delete customer?')) return; 
-      State.customers = State.customers.filter(x=>x.id!==id); 
-      saveState(); 
-      renderCustomers(); 
-      logActivity('customer_deleted', { id }); 
+        if(!hasPermission('customers:edit')) return showToast('Permission denied.', 'error');
+        if(!confirm('Delete customer?')) return; 
+        State.customers = State.customers.filter(x=>x.id!==id); 
+        saveState(); 
+        renderCustomers(); 
+        logActivity('customer_deleted', { id }); 
     }
     
     function openEmployeeModal(id = null){
+      if(!hasPermission('users:manage')) return showToast('Permission denied. Cannot manage users.', 'error');
       const u = id ? State.users.find(x=>x.id===id) : {};
       const isNew = !id;
+      
+      let permissionsHtml = '';
+      if (currentUser.role === 'admin') {
+            permissionsHtml = `<div id="permissions-section" style="margin-top:12px;">
+                <h4 style="margin-bottom:8px">Cashier Permissions</h4>
+                <p class="small" style="color:var(--muted); margin-bottom:12px;">These settings only apply if the role is set to "Cashier".</p>
+            `;
+            for (const category in AVAILABLE_PERMISSIONS) {
+                permissionsHtml += `<h5 style="margin-bottom:4px;margin-top:8px">${category}</h5><div class="grid cols-3" style="grid-template-columns: 1fr 1fr; gap:8px;">`;
+                AVAILABLE_PERMISSIONS[category].forEach(perm => {
+                    // Check if the permission key is in the user's current permissions array
+                    const isChecked = (u.permissions || DEFAULT_CASHIER_PERMISSIONS).includes(perm.key);
+                    permissionsHtml += `
+                        <label style="display:flex;align-items:center;gap:4px">
+                            <input type="checkbox" data-permission="${perm.key}" ${isChecked ? 'checked' : ''} />
+                            ${perm.label}
+                        </label>
+                    `;
+                });
+                permissionsHtml += `</div>`;
+            }
+            permissionsHtml += `</div>`;
+      }
+
       showModal(`${isNew ? 'New' : 'Edit'} Employee`, `
         <div class="grid cols-3" style="grid-template-columns: 1fr;">
           <label>Full Name</label><input id="u-name" value="${escapeHtml(u.name||'')}" />
@@ -1690,6 +1949,7 @@
             <option value="cashier" ${u.role==='cashier' ? 'selected' : ''}>Cashier</option>
           </select>
         </div>
+        ${permissionsHtml}
         <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
             <button class='btn' id='modal-save'>Save</button>
             <button class='btn secondary' id='modal-cancel'>Cancel</button>
@@ -1701,16 +1961,40 @@
         const role = $('u-role').value;
         if(!name || !username || (isNew && !password)){ showToast('Fill all mandatory fields.', 'error'); return; }
         
+        // Collect permissions only if the role is 'cashier' and the current user is an admin
+        let userPermissions = null;
+        if (role === 'cashier' && currentUser.role === 'admin') {
+            userPermissions = [];
+            modal.querySelectorAll('#permissions-section input[type="checkbox"]').forEach(cb => {
+                if (cb.checked) {
+                    userPermissions.push(cb.getAttribute('data-permission'));
+                }
+            });
+        }
+
         if(isNew){
           if(State.users.some(x=>x.username===username)){ showToast('Username already exists.', 'error'); return; }
           const hashedPassword = await sha256Hex(password);
-          State.users.push({ id: pid('u'), name, username, password: hashedPassword, role });
-          logActivity('employee_added', { username });
+          State.users.push({ 
+            id: pid('u'), 
+            name, 
+            username, 
+            password: hashedPassword, 
+            role, 
+            permissions: userPermissions // Save collected permissions
+          });
+          logActivity('employee_added', { username, role });
         } else {
           Object.assign(u, { name, role });
           if(password){ u.password = await sha256Hex(password); }
-          logActivity('employee_updated', { id, username });
-          if(u.id === currentUser.id) currentUser.role = u.role; // Update current session role
+          // Update permissions if a new list was generated (i.e., if admin was editing a cashier)
+          if(userPermissions !== null) u.permissions = userPermissions;
+          
+          logActivity('employee_updated', { id, username, role });
+          if(u.id === currentUser.id) {
+              currentUser.role = u.role;
+              currentUser.permissions = u.permissions; // Update current session permissions
+          }
         }
 
         saveState();
@@ -1722,15 +2006,20 @@
 
     // Purchase Order Modals
     function openPurchaseOrderModal(id = null) {
+        if (!hasPermission('purchases:view')) return showToast('Permission denied. Cannot view purchase orders.', 'error');
+        const canEdit = hasPermission('purchases:edit');
+
         let po = id ? State.purchases.find(p => p.id === id) : { items: [], totalCost: 0, status: 'Pending' };
         let allProducts = State.products;
         let allSuppliers = State.suppliers;
-        let isViewOnly = po.status === 'Received';
+        let isViewOnly = !canEdit || po.status === 'Received';
+        if (id) currentPOItems = JSON.parse(JSON.stringify(po.items)); // Load existing items for viewing/editing
+        else currentPOItems = [];
 
         const poNumber = po.number || State.nextPurchase;
         const supplierOptions = allSuppliers.map(s => `<option value="${s.id}" ${po.supplierId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
         const productOptions = allProducts.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.sku})</option>`).join('');
-        const itemRows = po.items.map((item, index) => `
+        const itemRows = currentPOItems.map((item, index) => `
             <tr id="po-item-row-${index}">
                 <td>${escapeHtml(allProducts.find(p => p.id === item.productId)?.name || 'N/A')}</td>
                 <td><input type="number" class="po-qty" value="${item.quantity}" min="1" oninput="updatePOItem(${index})" ${isViewOnly ? 'readonly' : ''} /></td>
@@ -1768,7 +2057,7 @@
             <div style="text-align:right;font-size:18px;font-weight:700;margin-top:12px;">Total Cost: <span id="po-total-cost">${formatCurrency(po.totalCost)}</span></div>
             
             <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
-                ${po.status === 'Pending' ? `<button class='btn success' id='modal-receive'>Receive Stock</button>` : ''}
+                ${po.status === 'Pending' && canEdit ? `<button class='btn success' id='modal-receive'>Receive Stock</button>` : ''}
                 ${isViewOnly ? '' : `<button class='btn' id='modal-save'>Save PO</button>`}
                 <button class='btn secondary' id='modal-cancel'>Close</button>
             </div>
@@ -1776,8 +2065,8 @@
             savePurchaseOrder(id, poNumber, po.items); 
         });
 
-        if (po.status === 'Pending') {
-            document.getElementById('modal-receive').onclick = () => receiveStock(id, po.items);
+        if (po.status === 'Pending' && canEdit) {
+            document.getElementById('modal-receive').onclick = () => receiveStock(id, currentPOItems);
         }
     }
 
@@ -1828,7 +2117,7 @@
         const listEl = $('po-items-list');
         listEl.innerHTML = currentPOItems.map((item, index) => `
             <tr id="po-item-row-${index}">
-                <td>${escapeHtml(item.productName)}</td>
+                <td>${escapeHtml(State.products.find(p => p.id === item.productId)?.name || 'N/A')}</td>
                 <td><input type="number" class="po-qty" value="${item.quantity}" min="1" oninput="updatePOItem(${index})" /></td>
                 <td><input type="number" class="po-cost" value="${item.cost}" min="0" oninput="updatePOItem(${index})" /></td>
                 <td><span class="po-subtotal">${formatCurrency(item.quantity * item.cost)}</span></td>
@@ -1845,6 +2134,7 @@
     }
 
     function savePurchaseOrder(id, poNumber, existingItems) {
+        if (!hasPermission('purchases:edit')) return showToast('Permission denied. Cannot save purchase orders.', 'error');
         const supplierId = $('po-supplier').value;
         const totalCost = updatePOTotal();
 
@@ -1881,6 +2171,7 @@
     }
 
     function receiveStock(id, items) {
+        if (!hasPermission('purchases:edit')) return showToast('Permission denied. Cannot receive stock.', 'error');
         const po = State.purchases.find(p => p.id === id);
         if (!po || po.status === 'Received') return;
 
@@ -1907,6 +2198,9 @@
         const cat = document.getElementById('pos-category').value; 
         const list = State.products.filter(p=> (p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku||'').toLowerCase().includes(q.toLowerCase())) && (cat==='all' || p.category===cat)); 
         if(list.length===0){ el.innerHTML = '<div class="small" style="padding:12px">No matching products</div>'; return; } 
+        
+        const canOverridePrice = hasPermission('pos:price_override');
+
         el.innerHTML = list.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--border)">
             <div>
                 <strong style='font-size:16px;'>${escapeHtml(p.name)}</strong>
@@ -1921,6 +2215,8 @@
     }
     
     function openStockAdjustmentModal(){
+        if(!hasPermission('inventory:adjust')) return showToast('Permission denied. Cannot adjust stock.', 'error');
+
         showModal('Stock Adjustment', `
             <p>Manually adjust product stock levels. This action is logged.</p>
             <label for="adj-product">Product:</label>
