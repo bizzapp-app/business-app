@@ -5,31 +5,176 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="manifest" href="manifest.json">
   <title>SmartBizz App — POS</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    :root{--brand:#3d5ed4;--bg:#f6f8ff;--muted:#6b7280;--card:#fff;--receipt-width:58mm;}
+    /* --- Dark Mode Variables --- */
+    :root{
+      --brand: #4c51bf; /* NEW: Modern Indigo Blue */
+      --brand-light: rgba(76, 81, 191, 0.12); /* NEW: Updated light brand */
+      --bg: #f7f9fc; /* NEW: Very light, subtle blue-gray */
+      --bg-dark: #1f2937; /* Gray-800 */
+      --card: #fff;
+      --card-dark: #374151; /* Gray-700 */
+      --text: #1a202c; /* NEW: Soft black for high contrast */
+      --text-dark: #f6f8ff;
+      --muted: #718096; /* NEW: Medium Gray */
+      --border: #e2e8f0; /* NEW: Subtle, clearer border */
+      --border-dark: #4b5563;
+      --success: #059669; /* Slightly deeper green */
+      --error: #e53e3e; /* Slightly deeper red */
+      --receipt-width: 58mm;
+    }
+    .dark-mode {
+      --bg: var(--bg-dark);
+      --card: var(--card-dark);
+      --text: var(--text-dark);
+      --muted: #9ca3af;
+      --border: var(--border-dark);
+      background: var(--bg-dark) !important;
+      color: var(--text-dark) !important;
+    }
+    .dark-mode body{ background: var(--bg-dark) !important; }
+    .dark-mode header { border-bottom-color: var(--border); box-shadow: 0 1px 3px 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(255, 255, 255, 0.02); }
+    .dark-mode nav button.active{ background: var(--brand-light); }
+    .dark-mode nav button:hover:not(.active) { background: var(--card-dark); }
+    .dark-mode .card, .dark-mode #auth-card { box-shadow: 0 6px 18px rgba(0,0,0,0.2); }
+    .dark-mode input, .dark-mode select, .dark-mode textarea { background: var(--card-dark); border-color: var(--border); color: var(--text-dark); }
+    .dark-mode th, .dark-mode td { border-bottom-color: var(--border); }
+
+    /* --- Core CSS --- */
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:linear-gradient(180deg,var(--bg),#fff);color:#111}
-    header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid #eef2ff}
-    .logo{width:56px;height:56px;border-radius:999px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 8px 30px rgba(61,94,212,0.12)}
+    /* NEW: Use solid background color for a cleaner look */
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--text);transition:background 0.3s, color 0.3s}
+    
+    /* --- HEADER (Fixed) --- */
+    /* NEW: Added subtle shadow */
+    header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--border); position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.02);}
+    /* NEW: Updated logo shadow */
+    .logo{width:56px;height:56px;border-radius:999px;background:var(--brand);display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:0 8px 20px rgba(76, 81, 191, 0.3);}
     .app-name{font-weight:800}
+
+    /* --- RESPONSIVE MAIN LAYOUT (Desktop Default: Sidebar + Content) --- */
     .container{display:grid;grid-template-columns:260px 1fr;gap:18px;padding:18px}
-    nav{background:var(--card);padding:12px;border-radius:12px;border:1px solid #eef2ff;height:calc(100vh - 120px);overflow:auto}
-    nav button{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border-radius:8px;border:0;background:transparent;text-align:left;cursor:pointer}
-    nav button.active{background:linear-gradient(90deg,rgba(61,94,212,0.08),rgba(61,94,212,0.03))}
-    main{padding:12px;border-radius:12px;background:linear-gradient(180deg,#fff,#fbfdff);min-height:70vh;border:1px solid #eef2ff}
-    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(47,79,255,0.04);border:1px solid rgba(61,94,212,0.03);margin-bottom:12px}
+    nav{
+      background:var(--card);padding:12px;border-radius:12px;border:1px solid var(--border);
+      height:calc(100vh - 120px); /* Fixed height for desktop sidebar */
+      overflow:auto;
+      transition: transform 0.3s ease-in-out;
+    }
+    /* NEW: Updated navigation button styling */
+    nav button{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:8px;border:0;background:transparent;text-align:left;cursor:pointer;color:var(--text); margin-bottom: 4px; font-weight: 500; transition: background 0.2s, color 0.2s;}
+    nav button:hover:not(.active) { background: #f0f4f8; }
+    nav button.active{background:var(--brand-light);color:var(--brand); font-weight: 600;}
+    main{padding:0;min-height:70vh;border:none;background:transparent;}
+    
+    /* NEW: Card/Page styling updated for a floating/layered effect */
+    .page.card{padding:18px;border-radius:12px;background:var(--card);border:1px solid var(--border);}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border:1px solid rgba(76, 81, 191, 0.05); margin-bottom:12px;transition:background 0.3s, box-shadow 0.3s}
+    
+    /* --- Responsive Tables --- */
+    .table-responsive {
+        overflow-x: auto; 
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 12px;
+    }
     table{width:100%;border-collapse:collapse;margin-top:8px}
-    th,td{padding:8px;border-bottom:1px solid #f1f5fb;text-align:left}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left; white-space: nowrap;}
     .small{font-size:12px;color:var(--muted)}
     .grid{display:grid;gap:12px}
     .grid.cols-3{grid-template-columns:repeat(3,1fr)}
-    input,select,textarea,button{padding:8px;border-radius:8px;border:1px solid #e6edf9;background:#fff;flex:1}
+    /* NEW: Input and Button styling update */
+    input,select,textarea{padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);flex:1;color:var(--text); transition: border-color 0.2s;}
+    input:focus, select:focus, textarea:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 1px var(--brand-light); }
     .hidden{display:none}
     .center{display:flex;align-items:center;justify-content:center}
-    .btn{background:var(--brand);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
-    .btn.secondary{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+    
+    .btn{background:var(--brand);color:#fff;padding:10px 15px;border-radius:8px;border:0;cursor:pointer;font-weight:600; transition: all 0.2s ease;}
+    /* NEW: Button hover effects */
+    .btn:hover:not(.danger):not([disabled]){ 
+      background: #5a62d5; 
+      box-shadow: 0 4px 8px rgba(76, 81, 191, 0.3);
+    }
+    .btn.secondary{background:var(--card);color:var(--brand);border:1px solid var(--brand); font-weight: 500;}
+    .btn.secondary:hover:not([disabled]){ background: var(--brand-light); }
+    .btn.danger { background: var(--error); color: #fff; }
+    .btn.danger:hover:not([disabled]){ background: #d03030; }
     .muted{color:var(--muted)}
-    @media(max-width:900px){.container{grid-template-columns:1fr}}
+
+    /* Desktop POS Layout */
+    #pos-page > div {
+        display:grid;
+        grid-template-columns:1fr minmax(300px, 380px); /* Flexible catalog, fixed/max cart width */
+        gap:12px;
+        max-width:100%;
+    }
+    
+    /* --- 900px Breakpoint: Tablet/Mobile Menu and Single Column Layout --- */
+    @media(max-width:900px){
+      /* Main Content Layout */
+      .container{
+        grid-template-columns:1fr; /* Single column */
+        padding: 12px;
+        gap: 12px;
+      }
+      /* Sidebar (Off-Canvas Menu) */
+      nav{
+        position: fixed;
+        top: 85px; /* Below header */
+        left: 0;
+        width: 260px;
+        height: calc(100% - 85px);
+        z-index: 50;
+        transform: translateX(-100%); /* Hidden by default */
+        box-shadow: 6px 0 12px rgba(0,0,0,0.2);
+        border-right: 1px solid var(--border);
+        border-top: 0;
+        border-bottom: 0;
+        background: var(--card); 
+      }
+      /* Show sidebar when 'menu-open' class is added to body (requires JS toggle) */
+      body.menu-open nav {
+        transform: translateX(0);
+      }
+      /* Allow main content to take up full screen */
+      main{
+        min-height: auto;
+      }
+    }
+    
+    /* --- 768px Breakpoint: POS and Grid Stacking --- */
+    @media(max-width:768px){
+      /* POS Layout Stacking */
+      #pos-page > div { 
+        grid-template-columns: 1fr; /* Stack Cart and Products in a single column */
+        gap: 12px;
+      }
+      /* Change order for mobile: Cart on top (Order 1), Catalog below (Order 2) */
+      #pos-page > div > .card:first-child { 
+        order: 2; /* Catalog */
+      }
+      #pos-page > div > .card:last-child { 
+        order: 1; /* Cart */
+      }
+      /* Dashboard Grid Stacking: 3-column grids become 2-column or better */
+      .grid.cols-3{
+        grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+      }
+    }
+    
+    /* Utility for Menu Toggle Button */
+    #menu-toggle {
+        display: none; /* Hide by default on desktop */
+        margin-right: 12px; 
+        width: auto;
+        flex: none;
+    }
+    @media(max-width:900px){
+        #menu-toggle {
+            display: block; /* Show on mobile/tablet */
+        }
+    }
+    
+    /* Print Styles */
     @media print {
       body, html {margin:0 !important;padding:0 !important;background:#fff !important;}
       body * {visibility:hidden !important;box-shadow:none !important;border-radius:0 !important;}
@@ -39,136 +184,321 @@
     }
     .receipt{width:var(--receipt-width,58mm);padding:12px;font-family:monospace}
     .receipt .logo{width:56px;height:56px;border-radius:50%;font-weight:900;margin:0 auto}
-    #auth-screen{position:fixed;inset:0;display:grid;place-items:center;background:rgba(2,6,23,0.45);backdrop-filter:blur(2px)}
-    #auth-card{width:620px;background:#fff;padding:20px;border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.3)}
-    #receipt-width-selector {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 99;
-      background: #fff;
-      border: 1px solid #eef2ff;
-      border-radius: 8px;
-      padding: 6px 12px;
-      box-shadow: 0 2px 8px rgba(47,79,255,0.06);
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap:8px;
-    }
+    #auth-screen{position:fixed;inset:0;display:grid;place-items:center;background:rgba(2,6,23,0.45);backdrop-filter:blur(2px);z-index:1000}
+    #auth-card{width:620px;background:var(--card);padding:20px;border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.3); max-width: 90vw; min-width: 280px;} /* Responsive Auth Card */
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: grid; gap: 10px; }
+    .toast { background: var(--card); color: var(--text); padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); transition: opacity 0.3s, transform 0.3s; min-width: 250px; border-left: 4px solid var(--brand); }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--error); }
+    .toast.hide { opacity: 0; transform: translateY(10px); }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">SB</div>
+    <button id="menu-toggle" class="btn secondary" style="width:auto;flex:none;">☰</button> <div class="logo">SB</div>
     <div>
       <div class="app-name">SmartBizz App</div>
       <div class="small">Smartbizz POS </div>
       <div class="small">created by brian</div>
     </div>
-    <div style="margin-left:auto" id="user-area"></div>
+    <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+      <div id="user-area"></div>
+      <button id="dark-mode-toggle" class="btn secondary" style="width:auto;flex:none;">☀️</button>
+      <button id="logoutBtn" class="btn secondary" style="width:auto;flex:none;">Logout</button>
+    </div>
   </header>
 
   <div class="container">
-    <nav id="sidebar">
+    <nav>
       <button data-page="dashboard" class="active">🏠 Dashboard</button>
       <button data-page="pos">🛒 POS / Sell</button>
       <button data-page="products">📦 Products</button>
       <button data-page="inventory">📈 Inventory</button>
+      <button data-page="suppliers">🚚 Suppliers</button>
+      <button data-page="purchases">🧾 Purchases / Stock In</button>
+      <button data-page="expenses">💸 Expenses</button>
       <button data-page="customers">👥 Customers</button>
       <button data-page="employees">👨‍💼 Employees</button>
       <button data-page="reports">📊 Reports</button>
       <button data-page="zreport">🧾 Z-Report</button>
+      <button data-page="activitylog">⏳ Activity Log</button>
       <button data-page="settings">⚙️ Settings</button>
-      <div style="margin-top:12px"><button id="logoutBtn" class="btn secondary">Logout</button></div>
     </nav>
+
     <main id="main">
       <div id="dashboard-page" class="page card"></div>
-        <div id="pos-page" class="page hidden"></div>
-        <div id="products-page" class="page hidden card"></div>
-        <div id="inventory-page" class="page hidden card"></div>
-        <div id="customers-page" class="page hidden card"></div>
-        <div id="employees-page" class="page hidden card"></div>
-        <div id="reports-page" class="page hidden card"></div>
-        <div id="zreport-page" class="page hidden card"></div>
-        <div id="settings-page" class="page hidden card"></div>
+      <div id="pos-page" class="page hidden"></div>
+      <div id="products-page" class="page hidden card"></div>
+      <div id="inventory-page" class="page hidden card"></div>
+      <div id="suppliers-page" class="page hidden card"></div>
+      <div id="purchases-page" class="page hidden card"></div>
+      <div id="expenses-page" class="page hidden card"></div>
+      <div id="customers-page" class="page hidden card"></div>
+      <div id="employees-page" class="page hidden card"></div>
+      <div id="reports-page" class="page hidden card"></div>
+      <div id="zreport-page" class="page hidden card"></div>
+      <div id="activitylog-page" class="page hidden card"></div>
+      <div id="settings-page" class="page hidden card"></div>
     </main>
-  </div>
-  <div id="receipt-width-selector" class="hidden">
-    <label for="receipt-width">Receipt width:</label>
-    <select id="receipt-width">
-      <option value="58mm">58mm (Small)</option>
-      <option value="80mm">80mm (Large)</option>
-      <option value="100mm">100mm (Wide)</option>
-      <option value="auto">Auto</option>
-    </select>
   </div>
   <div id="auth-screen">
     <div id="auth-card"></div>
   </div>
+  <div id="toast-container"></div>
   <div id="printable-content" class="hidden">
     <div class="receipt card" id="receipt-content"></div>
     <div class="receipt card" id="report-content"></div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
   <script>
-    // --- State and login ---
-    const STORAGE_KEY = 'smartbizz_complete_v1';
-    const defaultState = { nextReceipt:1001, users:[], products:[], customers:[], receipts:[], suppliers:[], settings:{businessName:'SmartBizz',address:'',vat:'',currency:'KES',taxPercent:0} };
-    function loadState(){ const raw = localStorage.getItem(STORAGE_KEY); if(!raw){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); } try{return JSON.parse(raw);}catch(e){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); } }
+    // --- State and Storage ---
+    const STORAGE_KEY = 'smartbizz_complete_v2';
+    const defaultState = {
+      nextReceipt: 1001,
+      nextPurchase: 1,
+      users: [],
+      products: [],
+      customers: [], 
+      receipts: [],
+      suppliers: [],
+      purchases: [], 
+      expenses: [], 
+      activityLog: [], 
+      settings: {
+        businessName: 'SmartBizz',
+        address: '123 Enterprise Rd, Nairobi',
+        vat: 'A12345678Z',
+        currency: 'KES',
+        taxPercent: 16,
+        sessionTimeout: 600000, // 10 minutes in ms
+        isDarkMode: false,
+      }
+    };
+    function loadState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState));
+        return JSON.parse(JSON.stringify(defaultState));
+      }
+      try{
+        const state = JSON.parse(raw);
+        // Ensure new fields exist for backward compatibility
+        state.purchases = state.purchases || [];
+        state.expenses = state.expenses || [];
+        state.activityLog = state.activityLog || [];
+        state.settings = Object.assign({}, defaultState.settings, state.settings);
+        state.products = state.products.map(p => {
+            p.costPrice = p.costPrice || 0; 
+            p.reorderPoint = p.reorderPoint || 5; 
+            return p;
+        });
+        state.customers = state.customers.map(c => {
+            c.creditBalance = c.creditBalance || 0; 
+            return c;
+        });
+        return state;
+      }catch(e){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState));
+        return JSON.parse(JSON.stringify(defaultState));
+      }
+    }
+
     function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(State)); }
-    let State = loadState(); let currentUser = null;
+    let State = loadState();
+    let currentUser = null;
+    let lastActivity = Date.now();
+    let sessionInterval = null;
+
+    // --- Utility Functions ---
     function pid(prefix='id'){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
     function $(id){ return document.getElementById(id); }
     function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function formatCurrency(v){ return (State.settings.currency||'KES') + ' ' + Number(v||0).toLocaleString(); }
-    async function sha256Hex(text){ const enc = new TextEncoder(); const data = enc.encode(text); const h = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
-    async function showAuth(){ const card = $('auth-card');
-      if(State.users.length===0){
-        card.innerHTML = `
-          <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
-            <div class='logo'>SB</div>
-            <div><div style='font-weight:900;font-size:18px'>Welcome — Setup Admin</div><div class='small'>Create your admin account</div></div>
-          </div>
-          <div style='display:grid;gap:8px'>
-            <input id='setup-name' placeholder='Full name' />
-            <input id='setup-user' placeholder='Username' />
-            <input id='setup-pass' placeholder='Password' type='password' />
-            <div style='display:flex;justify-content:flex-end;gap:8px'><button class='btn' id='setup-save'>Create admin</button></div>
-          </div>`;
-        $('setup-save').onclick = async ()=>{ const name=$('setup-name').value.trim(); const user=$('setup-user').value.trim(); const pass=$('setup-pass').value; if(!name||!user||!pass){ alert('All fields required'); return; } const hash = await sha256Hex(pass); State.users.push({id:pid('u'),username:user,passwordHash:hash,role:'admin',name}); saveState(); showLogin(); };
-      } else { showLogin(); }
+    function formatCurrency(v){ return (State.settings.currency||'KES') + ' ' + Number(v||0).toLocaleString('en-US', {minimumFractionDigits: 2}); }
+    function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+    // --- Hashing, Activity Log, Toast System, Authentication ---
+    async function sha256Hex(text){
+      const enc = new TextEncoder();
+      const data = enc.encode(text);
+      const h = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-    function showLogin(){ const card = $('auth-card'); card.innerHTML = `
-      <div style='display:flex;gap:12px;align-items:center;margin-bottom:10px'>
-        <div class='logo'>SB</div>
-        <div><div style='font-weight:900;font-size:18px'>Sign in</div><div class='small'>Enter credentials</div></div>
-      </div>
-      <div style='display:grid;gap:8px'>
-        <input id='login-user' placeholder='Username' />
-        <input id='login-pass' placeholder='Password' type='password' />
-        <div style='display:flex;justify-content:flex-end;gap:8px'><button class='btn' id='login-btn'>Sign in</button></div>
-      </div>`; $('login-btn').onclick = loginHandler; }
-    async function loginHandler(){ const u=$('login-user').value.trim(); const p=$('login-pass').value; if(!u||!p){ alert('Enter username and password'); return; } const found = State.users.find(x=>x.username===u); if(!found){ alert('No such user'); return; } const h = await sha256Hex(p); if(h !== found.passwordHash){ alert('Invalid password'); return; } currentUser = found; $('auth-screen').style.display='none'; $('user-area').innerHTML = `<div class='small'>${escapeHtml(currentUser.name||currentUser.username)} • ${currentUser.role}</div>`; applyRole(); renderAll(); }
-    function applyRole(){
-      if(!currentUser) return;
-      document.querySelectorAll('nav button[data-page]').forEach(button => {
-        const page = button.getAttribute('data-page');
-        const pageEl = $(page + '-page');
-        if (currentUser.role === 'admin') {
-          button.style.display = 'flex';
-          if(pageEl) pageEl.style.display = 'block';
-        } else {
-          // Regular user, check permissions
-          const hasPermission = currentUser.permissions && currentUser.permissions[page];
-          button.style.display = hasPermission ? 'flex' : 'none';
-          if(pageEl) pageEl.style.display = hasPermission ? 'block' : 'none';
+    function logActivity(action, details = {}) {
+        State.activityLog.push({
+            id: pid('act'),
+            timestamp: new Date().toISOString(),
+            userId: currentUser ? currentUser.id : 'system',
+            userName: currentUser ? currentUser.name || currentUser.username : 'System',
+            action: action,
+            details: JSON.stringify(details)
+        });
+        if (State.activityLog.length > 500) {
+            State.activityLog = State.activityLog.slice(-500);
         }
-      });
-      showPage('dashboard'); // Always show dashboard first
     }
-    window.onload = ()=>{ showAuth(); };
+    function showToast(message, type = 'info', duration = 3000) {
+        const container = $('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('hide');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, duration);
+        logActivity('toast_shown', { message, type });
+    }
+    window.showToast = showToast;
+
+    // Session Management and Security
+    function startSessionTimeout() {
+        if (sessionInterval) clearInterval(sessionInterval);
+        sessionInterval = setInterval(() => {
+            if (Date.now() - lastActivity > State.settings.sessionTimeout) {
+                if (currentUser) {
+                    showToast('Session timed out due to inactivity.', 'error');
+                    logout();
+                }
+            }
+        }, 5000); // Check every 5 seconds
+    }
+    document.addEventListener('mousemove', resetActivityTimer);
+    document.addEventListener('keydown', resetActivityTimer);
+    function resetActivityTimer() { lastActivity = Date.now(); }
+
+    async function showAuth(){
+      const el = $('auth-screen');
+      el.style.display = 'grid';
+      if(State.users.length === 0) {
+        showRegister();
+      } else {
+        showLogin();
+      }
+    }
+    function showLogin(){
+      $('auth-card').innerHTML = `
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username" style="margin-bottom:12px" />
+        <input type="password" id="password" placeholder="Password" style="margin-bottom:12px" />
+        <button class="btn" id="login-btn" style="margin-bottom:12px">Login</button>
+        ${State.users.length > 0 ? '' : '<p class="small">No users found. <a href="#" id="auth-switch">Register Admin User</a></p>'}
+      `;
+      $('login-btn').onclick = loginHandler;
+      if (State.users.length === 0) $('auth-switch').onclick = showRegister;
+      // Press enter to login
+      document.querySelectorAll('#auth-card input').forEach(input => {
+          input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') loginHandler();
+          });
+      });
+    }
+    function showRegister(){
+      $('auth-card').innerHTML = `
+        <h2>Register Admin</h2>
+        <input type="text" id="name" placeholder="Full Name" style="margin-bottom:12px" />
+        <input type="text" id="username" placeholder="Username (for login)" style="margin-bottom:12px" />
+        <input type="password" id="password" placeholder="Password" style="margin-bottom:12px" />
+        <button class="btn" id="register-btn" style="margin-bottom:12px">Register</button>
+        <p class="small">Already have an account? <a href="#" id="auth-switch">Login</a></p>
+      `;
+      $('register-btn').onclick = registerHandler;
+      $('auth-switch').onclick = showLogin;
+    }
+    async function registerHandler(){
+        const name = $('name').value.trim();
+        const username = $('username').value.trim();
+        const password = $('password').value;
+        if(!name || !username || !password){ showToast('Please fill all fields', 'error'); return; }
+        const hashedPassword = await sha256Hex(password);
+        const newUser = { id: pid('u'), name, username, password: hashedPassword, role: 'admin' };
+        State.users.push(newUser);
+        saveState();
+        showToast('Admin user registered successfully! Please login.', 'success');
+        showLogin();
+    }
+    async function loginHandler(){
+      const username = $('username').value.trim();
+      const password = $('password').value;
+      const user = State.users.find(u => u.username === username);
+      if(user){
+        const hashedPassword = await sha256Hex(password);
+        if(user.password === hashedPassword){
+          currentUser = user;
+          $('auth-screen').style.display = 'none';
+          $('user-area').innerHTML = `Logged in as: <strong>${currentUser.name || currentUser.username}</strong> (${currentUser.role.toUpperCase()})`;
+          showToast(`Welcome, ${currentUser.name || currentUser.username}!`, 'success');
+          startSessionTimeout();
+          renderAll();
+          logActivity('login', { userId: currentUser.id, username: currentUser.username });
+          return;
+        }
+      }
+      showToast('Invalid username or password', 'error');
+      logActivity('login_failed', { username });
+    }
+    function logout(){
+      currentUser = null;
+      $('user-area').innerHTML = '';
+      clearInterval(sessionInterval);
+      showAuth();
+      showToast('You have been logged out.', 'info');
+      document.body.classList.remove('menu-open'); // Close menu on logout
+    }
+
+    // --- Factory Reset Function ---
+    function factoryReset(){
+        if(currentUser && currentUser.role !== 'admin'){
+            showToast('Only Admin users can perform a factory reset.', 'error');
+            return;
+        }
+        if(confirm('⚠️ WARNING: Are you sure you want to factory reset the entire application? All users, products, sales, and settings will be permanently deleted.')){
+            localStorage.removeItem(STORAGE_KEY);
+            showToast('Application reset. Reloading...', 'error', 2000);
+            logActivity('factory_reset', { user: currentUser.username });
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    }
+    // --- END FACTORY RESET FUNCTION ---
+
+    function applyRole(){
+        if (!currentUser || currentUser.role === 'cashier') {
+            document.querySelectorAll('nav button[data-page]:not([data-page="pos"]):not([data-page="dashboard"])').forEach(b => b.classList.add('hidden'));
+            document.getElementById('pos-add-product')?.classList.add('hidden');
+        } else {
+            document.querySelectorAll('nav button[data-page]').forEach(b => b.classList.remove('hidden'));
+            document.getElementById('pos-add-product')?.classList.remove('hidden');
+        }
+    }
+    function toggleDarkMode(isInit = false) {
+        const body = document.body;
+        const isDark = isInit ? State.settings.isDarkMode : !body.classList.contains('dark-mode');
+        
+        if (isDark) {
+            body.classList.add('dark-mode');
+            $('dark-mode-toggle').textContent = '🌙';
+        } else {
+            body.classList.remove('dark-mode');
+            $('dark-mode-toggle').textContent = '☀️';
+        }
+
+        if (!isInit) {
+            State.settings.isDarkMode = isDark;
+            saveState();
+            logActivity('settings_updated', { isDarkMode: isDark });
+        }
+    }
+
+    window.onload = ()=>{
+      toggleDarkMode(true);
+      showAuth();
+    };
+    $('dark-mode-toggle').onclick = () => toggleDarkMode();
+    document.getElementById('logoutBtn').onclick = logout;
+    document.getElementById('menu-toggle').onclick = () => { document.body.classList.toggle('menu-open'); }; // NEW: Menu toggle
 
     // --- Tabs and Navigation ---
     function showPage(pg){
@@ -178,122 +508,454 @@
       document.querySelector('nav button[data-page="'+pg+'"]').classList.add('active');
     }
     document.querySelectorAll('nav button[data-page]').forEach(b=>{
-      b.onclick = function(){ showPage(this.getAttribute('data-page')); };
+      b.onclick = function(){ 
+        const page = this.getAttribute('data-page');
+        showPage(page);
+        
+        // Close menu if it is open (for mobile users)
+        if(document.body.classList.contains('menu-open')) {
+            document.body.classList.remove('menu-open');
+        }
+
+        switch(page){
+            case 'dashboard': renderDashboard(); break;
+            case 'pos': renderPOS(); break;
+            case 'products': renderProducts(); break;
+            case 'inventory': renderInventory(); break;
+            case 'suppliers': renderSuppliers(); break;
+            case 'purchases': renderPurchases(); break;
+            case 'expenses': renderExpenses(); break;
+            case 'customers': renderCustomers(); break;
+            case 'employees': renderEmployees(); break;
+            case 'reports': renderReports(); break;
+            case 'zreport': renderZReport(); break;
+            case 'activitylog': renderActivityLog(); break;
+            case 'settings': renderSettings(); break;
+        }
+      };
     });
-    document.getElementById('logoutBtn').onclick = function(){
-      currentUser = null;
-      $('auth-screen').style.display = '';
-      $('user-area').innerHTML = "";
-      showAuth();
-    };
-
-    // --- Receipt width selector logic ---
-    function setReceiptWidth(val) {
-      var root = document.documentElement;
-      if(val === "auto") root.style.setProperty('--receipt-width', '100%');
-      else root.style.setProperty('--receipt-width', val);
-      document.querySelectorAll('.receipt').forEach(function(el){
-        el.style.width = val === "auto" ? "100%" : val;
-      });
-      document.getElementById('printable-content').style.width = val === "auto" ? "100%" : val;
-    }
-    function showReceiptWidthSelector(show) {
-      document.getElementById('receipt-width-selector').classList.toggle('hidden', !show);
-    }
-    document.getElementById('receipt-width').addEventListener('change', function(e){
-      setReceiptWidth(e.target.value);
-    });
-    setReceiptWidth("58mm");
-
-    // --- Print error handling ---
-    window.onafterprint = function(){
-      document.getElementById('printable-content').classList.add('hidden');
-      document.getElementById('receipt-content').innerHTML = '';
-      document.getElementById('report-content').innerHTML = '';
-      showReceiptWidthSelector(false);
-    };
-    window.onbeforeprint = function(){
-      document.getElementById('printable-content').classList.remove('hidden');
-      showReceiptWidthSelector(true);
-    };
-
-    // --- Service Worker registration for offline support ---
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => {
-            console.log('Service worker registered!', reg);
-          })
-          .catch(err => {
-            console.error('Service worker registration failed:', err);
-          });
-      });
-    }
 
     // --- Main app rendering and modal system ---
     function renderAll(){
-      renderDashboard();
-      renderPOS();
-      renderProducts();
-      renderInventory();
-      renderCustomers();
-      renderEmployees();
-      renderReports();
-      renderZReport();
-      renderSettings();
-      applyRole();
+      renderDashboard(); renderPOS(); renderProducts(); renderInventory(); renderSuppliers(); renderPurchases(); renderExpenses(); renderCustomers(); renderEmployees(); renderReports(); renderZReport(); renderActivityLog(); renderSettings(); applyRole();
     }
 
-    // Centralized modal system
+    // Centralized modal system (Responsive by default via CSS)
     function showModal(title, contentHtml, onSave, onCancel){
       const wrap = document.createElement('div');
       wrap.className = 'modal-wrapper';
-      wrap.style.position='fixed'; wrap.style.inset='0'; wrap.style.display='grid'; wrap.style.placeItems='center'; wrap.style.background='rgba(2,6,23,0.4)';
-      wrap.innerHTML = `<div style='background:#fff;padding:16px;border-radius:12px;min-width:320px;max-width:90vw;max-height:90vh;overflow:auto'><h3 style='margin-top:0'>${title}</h3><div id="modal-content">${contentHtml}</div></div>`;
+      wrap.style.position='fixed'; wrap.style.inset='0'; wrap.style.display='grid'; wrap.style.placeItems='center'; wrap.style.background='rgba(2,6,23,0.4)'; wrap.style.zIndex='100';
+      // max-width is handled in CSS #auth-card/modal-wrapper > div 
+      wrap.innerHTML = `<div style='background:var(--card);padding:16px;border-radius:12px;min-width:320px;max-width:90vw;max-height:90vh;overflow:auto;color:var(--text)'><h3 style='margin-top:0'>${title}</h3><div id="modal-content">${contentHtml}</div></div>`;
       document.body.appendChild(wrap);
+      
+      const modalCard = wrap.querySelector('div');
+      modalCard.style.boxShadow = '0 12px 40px rgba(2,6,23,0.3)';
+
       if(onCancel) wrap.querySelector('#modal-cancel').onclick = ()=>wrap.remove();
       if(onSave) wrap.querySelector('#modal-save').onclick = ()=>onSave(wrap);
+
+      wrap.onclick = (e) => {
+        if (e.target === wrap) wrap.remove();
+      };
+      
       return wrap;
     }
     function closeModal(){
         const modal = document.querySelector('.modal-wrapper');
         if(modal) modal.remove();
     }
-
-    // --- Dashboard ---
-    function renderDashboard(){
-      const el = $('dashboard-page');
-      const salesToday = State.receipts.filter(r=> isSameDay(new Date(r.date), new Date())).reduce((s,r)=>s+r.total,0);
-      const productsCount = State.products.length;
-      const customersCount = State.customers.length;
-      const employeesCount = State.users.length;
-      const lowStock = State.products.filter(p=>p.stock<=5).length;
-      el.innerHTML = `<h3>Dashboard</h3>
-        <div class="grid cols-3">
-          <div class='card'>Today's Sales<br/><strong>${formatCurrency(salesToday)}</strong></div>
-          <div class='card'>Products<br/><strong>${productsCount}</strong></div>
-          <div class='card'>Low stock<br/><strong style='color:${lowStock?"red":"inherit"}'>${lowStock}</strong></div>
-          <div class='card'>Customers<br/><strong>${customersCount}</strong></div>
-          <div class='card'>Employees<br/><strong>${employeesCount}</strong></div>
-        </div>
-        <div class="card">
-          <h4>Recent Sales</h4>
-          <div>${State.receipts.slice(-8).reverse().map(r=>`<div style='display:flex;justify-content:space-between;padding:6px 0'><div><strong>#${r.number}</strong><div class='small'>${r.items.length} items • ${new Date(r.date).toLocaleString()}</div></div><div>${formatCurrency(r.total)}</div></div>`).join('')}</div>
-        </div>`;
+    
+    // --- POS Helpers ---
+    function renderCategories(){
+        const categories = [...new Set(State.products.map(p => p.category).filter(c => c))];
+        const select = document.getElementById('pos-category');
+        select.innerHTML = '<option value="all">All categories</option>' + 
+                           categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }
-    function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+    function renderPOSCustomers() {
+        const select = document.getElementById('cart-customer');
+        select.innerHTML = '<option value="">Walk-in Customer</option>' +
+                           State.customers.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (${formatCurrency(c.creditBalance)} credit)</option>`).join('');
+    }
+    function changeQty(id, delta){
+        const item = Cart.find(i=>i.id===id);
+        if(item){
+            item.qty += delta;
+            if(item.qty <= 0) {
+                Cart = Cart.filter(i=>i.id!==id);
+                showToast(`${item.name} removed from cart.`, 'info');
+            }
+            renderCart();
+        }
+    }
+    function clearCart(){ Cart = []; renderCart(); showToast('Cart cleared.', 'info'); }
+    window.addToCart = function(id, priceOverride = null){
+        const product = State.products.find(p=>p.id===id);
+        if(!product){ showToast('Product not found.', 'error'); return; }
+        
+        let item = Cart.find(i=>i.id===id);
+        if(!item){
+            item = { 
+                id: product.id, 
+                name: product.name, 
+                price: priceOverride !== null ? priceOverride : product.price, 
+                costPrice: product.costPrice || 0,
+                qty: 1 
+            };
+            Cart.push(item);
+            showToast(`${item.name} added to cart.`, 'success');
+        } else {
+            item.qty++;
+            if (priceOverride !== null) item.price = priceOverride;
+            showToast(`Increased quantity of ${item.name}.`, 'success');
+        }
+        renderCart();
+    }
 
-    // --- POS ---
+    // --- Price Override Modal ---
+    window.openPriceOverrideModal = function(itemIndex, currentPrice) {
+        const item = Cart[itemIndex];
+        if (!item) return;
+
+        showModal(`Override Price for ${item.name}`, `
+            <p>Current Price: ${formatCurrency(item.price)}</p>
+            <label for="override-price">New Price:</label>
+            <input type="number" id="override-price" value="${item.price}" min="0" />
+            <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+                <button class='btn' id='modal-save'>Apply</button>
+                <button class='btn secondary' id='modal-cancel'>Cancel</button>
+            </div>
+        `, (modal) => {
+            const newPrice = Number(modal.querySelector('#override-price').value);
+            if (isNaN(newPrice) || newPrice < 0) {
+                alert('Invalid price entered.');
+                return;
+            }
+            item.price = newPrice;
+            showToast(`Price for ${item.name} updated to ${formatCurrency(newPrice)}`, 'info');
+            renderCart();
+            closeModal();
+        });
+    }
+
+    function renderCart(){
+        const listEl = $('cart-list');
+        const totalEl = $('cart-total');
+        
+        const subtotal = Cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+        const discount = getCartDiscount(subtotal);
+        const taxableAmount = subtotal - discount;
+        const tax = taxableAmount * (State.settings.taxPercent / 100);
+        const total = taxableAmount + tax;
+        
+        listEl.innerHTML = Cart.map((item, index) => `
+            <div style="display:grid;grid-template-columns:1fr 80px 100px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border)">
+                <div>
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <div class="small">${formatCurrency(item.price)}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                    <button onclick="changeQty('${item.id}', -1)" class="btn secondary" style="padding:4px;width:24px;height:24px;flex:none">-</button>
+                    <span>${item.qty}</span>
+                    <button onclick="changeQty('${item.id}', 1)" class="btn secondary" style="padding:4px;width:24px;height:24px;flex:none">+</button>
+                </div>
+                <div style="text-align:right">
+                    ${formatCurrency(item.price * item.qty)}
+                    <button onclick="openPriceOverrideModal(${index}, ${item.price})" class="btn secondary" style="padding:2px 4px;font-size:10px;margin-left:4px">Override</button>
+                </div>
+            </div>
+        `).join('') || '<div class="small" style="padding:10px;text-align:center">Cart is empty.</div>';
+
+        totalEl.innerHTML = `
+            <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted)"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--error)"><span>Discount:</span><span>-${formatCurrency(discount)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--muted)"><span>Tax (${State.settings.taxPercent}%):</span><span>${formatCurrency(tax)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:800;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;"><span>Total:</span><span id="final-total">${formatCurrency(total)}</span></div>
+        `;
+    }
+    function getCartDiscount(subtotal) {
+        const discVal = Number($('cart-discount').value) || 0;
+        const discPct = Number($('cart-discount-pct').value) || 0;
+        
+        let discount = 0;
+        if (discVal > 0) {
+            discount = discVal;
+            // Clear percent field if value is used
+            $('cart-discount-pct').value = 0; 
+        } else if (discPct > 0) {
+            discount = subtotal * (discPct / 100);
+            // Clear value field if percent is used
+            $('cart-discount').value = 0;
+        }
+        return discount;
+    }
+    
+    function startCheckout(){
+        if(Cart.length === 0) { showToast('Cart is empty.', 'error'); return; }
+
+        const subtotal = Cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+        const discount = getCartDiscount(subtotal);
+        const taxableAmount = subtotal - discount;
+        const tax = taxableAmount * (State.settings.taxPercent / 100);
+        const total = taxableAmount + tax;
+        const paymentMethod = $('cart-payment').value;
+        const customerId = $('cart-customer').value;
+
+        showModal('Complete Sale', `
+            <div style="font-size:24px;font-weight:700;margin-bottom:12px">Total Due: ${formatCurrency(total)}</div>
+            <div style="margin-bottom:12px;display:flex;gap:8px">
+              <label style="flex:1">Payment Method:</label>
+              <input type="text" value="${paymentMethod}" readonly style="flex:2;background:var(--bg)"/>
+            </div>
+            ${paymentMethod === 'On Credit' ? `
+                <div style="color:var(--error);font-weight:700;margin-bottom:12px;">Warning: This sale will be registered as a debt against the customer's credit balance.</div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                    <button class='btn danger' id='modal-save'>Process Credit Sale</button>
+                    <button class='btn secondary' id='modal-cancel'>Cancel</button>
+                </div>
+            ` : `
+                <input type="number" id="cash-tendered" placeholder="Cash Tendered" value="${total.toFixed(2)}" style="margin-bottom:12px" min="${total.toFixed(2)}" />
+                <div style="margin-bottom:12px;display:flex;justify-content:space-between">
+                    <span>Change Due:</span>
+                    <span id="change-due" style="font-weight:700">${formatCurrency(0)}</span>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                    <button class='btn' id='modal-save'>Complete Sale</button>
+                    <button class='btn secondary' id='modal-cancel'>Cancel</button>
+                </div>
+            `}
+        `, (modal) => {
+            if (paymentMethod === 'On Credit') {
+                if (!customerId) { showToast('Please select a customer for a credit sale.', 'error'); return; }
+                completeSale(paymentMethod, customerId, discount, total);
+                closeModal();
+                return;
+            }
+
+            const tendered = Number(modal.querySelector('#cash-tendered').value);
+            if (tendered < total) { showToast('Cash tendered is less than total.', 'error'); return; }
+
+            if(paymentMethod === 'M-Pesa'){
+                simulateMpesa(total);
+            } else {
+                completeSale(paymentMethod, customerId, discount, total, 'CASH_SALE');
+                closeModal();
+            }
+        });
+
+        const cashInput = document.getElementById('cash-tendered');
+        const changeDue = document.getElementById('change-due');
+        if (cashInput) {
+            const calculateChange = () => {
+                const tendered = Number(cashInput.value);
+                const change = tendered - total;
+                changeDue.textContent = formatCurrency(Math.max(0, change));
+            };
+            cashInput.oninput = calculateChange;
+            calculateChange();
+        }
+    }
+    
+    function simulateMpesa(total){
+        showModal('M-Pesa Payment', `
+            <p>Simulating M-Pesa transaction...</p>
+            <p>Total: ${formatCurrency(total)}</p>
+            <input type="text" id="mpesa-ref" placeholder="Enter M-Pesa Transaction Ref (e.g., QWERT123)" />
+            <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+                <button class='btn' id='modal-save'>Confirm Payment</button>
+                <button class='btn danger' id='modal-cancel'>Cancel</button>
+            </div>
+        `, (modal) => {
+            const ref = modal.querySelector('#mpesa-ref').value.trim();
+            if(!ref) { showToast('Please enter a transaction reference.', 'error'); return; }
+            completeSale('M-Pesa', $('cart-customer').value, getCartDiscount(Cart.reduce((s,i)=>s+i.price*i.qty,0)), total, ref);
+            closeModal();
+        });
+    }
+
+    function completeSale(method, customerId, discount, total, txnRef = null){
+        const now = new Date();
+        const subtotal = Cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+        const taxableAmount = subtotal - discount;
+        const tax = taxableAmount * (State.settings.taxPercent / 100);
+        
+        // 1. Create Receipt Object
+        const receipt = {
+            id: pid('r'),
+            number: State.nextReceipt++,
+            date: now.toISOString(),
+            items: JSON.parse(JSON.stringify(Cart)), // Deep copy cart items
+            subtotal,
+            discount,
+            tax,
+            total,
+            paymentMethod: method,
+            customerId: customerId || null,
+            cashier: currentUser.name || currentUser.username,
+            txnRef: txnRef || null
+        };
+
+        // 2. Update Stock and Profit
+        receipt.items.forEach(item => {
+            const product = State.products.find(p => p.id === item.id);
+            if(product) {
+                product.stock = Math.max(0, product.stock - item.qty);
+                item.profit = (item.price - (item.costPrice || 0)) * item.qty; // Calculate profit for reporting
+            }
+        });
+
+        // 3. Handle Credit Sale
+        if (method === 'On Credit' && customerId) {
+            const customer = State.customers.find(c => c.id === customerId);
+            if (customer) {
+                customer.creditBalance += total;
+                showToast(`Credit sale processed. Customer credit balance updated to ${formatCurrency(customer.creditBalance)}.`, 'info');
+            }
+        }
+
+        // 4. Save and Update UI
+        State.receipts.push(receipt);
+        Cart = [];
+        saveState();
+        showToast('Sale completed successfully!', 'success');
+        renderPOS(); // Re-render POS
+        logActivity('sale_completed', { receiptId: receipt.id, total });
+
+        // 5. Print Receipt
+        printReceipt(receipt);
+    }
+
+    function printReceipt(receipt){
+        const el = $('receipt-content');
+        const customer = State.customers.find(c => c.id === receipt.customerId);
+        
+        let itemsHtml = receipt.items.map(item => `
+            <tr>
+                <td>${item.qty} x ${escapeHtml(item.name)}</td>
+                <td style="text-align:right">${formatCurrency(item.price)}</td>
+                <td style="text-align:right">${formatCurrency(item.price * item.qty)}</td>
+            </tr>
+        `).join('');
+
+        el.innerHTML = `
+            <div style="text-align:center;margin-bottom:10px">
+                <div class="logo" style="margin:0 auto;width:30px;height:30px;font-size:12px;margin-bottom:4px;">SB</div>
+                <strong style="font-size:14px">${State.settings.businessName}</strong>
+                <div class="small">${State.settings.address}</div>
+                <div class="small">VAT: ${State.settings.vat}</div>
+                <div style="border-top:1px dashed #999;margin:8px 0"></div>
+            </div>
+            
+            <div class="small">Receipt No: ${receipt.number}</div>
+            <div class="small">Date: ${new Date(receipt.date).toLocaleString()}</div>
+            <div class="small">Cashier: ${receipt.cashier}</div>
+            ${customer ? `<div class="small">Customer: ${escapeHtml(customer.name)}</div>` : ''}
+            ${receipt.txnRef ? `<div class="small">Ref: ${receipt.txnRef}</div>` : ''}
+            <div style="border-top:1px dashed #999;margin:8px 0"></div>
+
+            <table style="font-size:12px;width:100%;border-collapse:collapse;margin-top:0;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;border-bottom:none;padding:2px 0;">Item</th>
+                        <th style="text-align:right;border-bottom:none;padding:2px 0;">Unit</th>
+                        <th style="text-align:right;border-bottom:none;padding:2px 0;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+            <div style="border-top:1px dashed #999;margin:8px 0"></div>
+
+            <div style="text-align:right;font-size:12px">
+                <div>Subtotal: ${formatCurrency(receipt.subtotal)}</div>
+                <div>Discount: -${formatCurrency(receipt.discount)}</div>
+                <div>Tax (${State.settings.taxPercent}%): ${formatCurrency(receipt.tax)}</div>
+                <div style="font-size:16px;font-weight:700;margin-top:5px;border-top:1px solid #000;padding-top:2px;">TOTAL: ${formatCurrency(receipt.total)}</div>
+                <div style="margin-top:5px">Payment: ${receipt.paymentMethod}</div>
+            </div>
+
+            <div style="border-top:1px dashed #999;margin:8px 0"></div>
+            <div style="text-align:center;font-size:12px">
+                Thank you for your business!
+            </div>
+        `;
+        
+        const printableContent = $('printable-content');
+        printableContent.classList.remove('hidden');
+        window.print();
+        printableContent.classList.add('hidden');
+    }
+
+    function openCashDrawer(){
+        showToast('Simulating cash drawer opening...', 'info');
+        logActivity('cash_drawer_opened');
+    }
+
+    // --- Page Render Functions ---
+
+    // Dashboard
+    function renderDashboard(){
+        const el = $('dashboard-page');
+        const today = new Date();
+        const todayReceipts = State.receipts.filter(r => isSameDay(new Date(r.date), today));
+        const todaySales = todayReceipts.reduce((sum, r) => sum + r.total, 0);
+        const todayProfit = todayReceipts.reduce((sum, r) => sum + r.items.reduce((s, i) => s + (i.profit || 0), 0), 0);
+        const totalStockValue = State.products.reduce((sum, p) => sum + p.stock * (p.costPrice || 0), 0);
+        const lowStockProducts = State.products.filter(p => p.stock <= (p.reorderPoint || 5)).length;
+
+        el.innerHTML = `<h3>Dashboard - Today</h3>
+            <div class="grid cols-3">
+                <div class="card">
+                    <div class="small">Today's Sales</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--brand)">${formatCurrency(todaySales)}</div>
+                </div>
+                <div class="card">
+                    <div class="small">Today's Profit</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--success)">${formatCurrency(todayProfit)}</div>
+                </div>
+                <div class="card">
+                    <div class="small">Today's Receipts</div>
+                    <div style="font-size:24px;font-weight:800">${todayReceipts.length}</div>
+                </div>
+                <div class="card">
+                    <div class="small">Total Inventory Value (Cost)</div>
+                    <div style="font-size:24px;font-weight:800">${formatCurrency(totalStockValue)}</div>
+                </div>
+                <div class="card">
+                    <div class="small">Low Stock Products</div>
+                    <div style="font-size:24px;font-weight:800;color:${lowStockProducts > 0 ? 'var(--error)' : 'var(--success)'}">${lowStockProducts}</div>
+                </div>
+                <div class="card">
+                    <div class="small">Total Expenses YTD</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--error)">${formatCurrency(State.expenses.reduce((s,e)=>s+e.amount,0))}</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top:20px;">
+                <h4>Quick Access</h4>
+                <div class="grid cols-3">
+                    <button class="btn" onclick="showPage('pos')">🛒 New Sale</button>
+                    <button class="btn secondary" onclick="openProductModal()">+ New Product</button>
+                    <button class="btn secondary" onclick="showPage('inventory')">📦 Stock Check</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // POS / Sell (Structure targets responsive CSS)
     let Cart = [];
     function renderPOS(){
       const el = $('pos-page');
+      // Note: The two-column grid structure here is targeted by the media query in CSS to become one column on mobile, with the cart on top.
       el.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 380px;gap:12px;max-width:100%">
           <div class="card">
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-              <input id="pos-search" placeholder="Search product by name or SKU" />
-              <select id="pos-category"><option value="all">All categories</option></select>
-              <button class="btn" id="pos-add-product">+ Product</button>
+              <input id="pos-search" placeholder="Search product by name, SKU, or Scan Barcode" style="flex: 2 1 200px;" />
+              <select id="pos-category" style="flex: 1 1 100px;"><option value="all">All categories</option></select>
+              <button class="btn" id="pos-add-product" style="flex: 1 1 100px;">+ Product</button>
             </div>
             <div id="catalog" style="min-height:160px;overflow:auto"></div>
           </div>
@@ -305,7 +967,7 @@
               <button class="btn secondary" id="add-new-customer-btn">+ New</button>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <select id="cart-payment"><option>Cash</option><option>M-Pesa</option><option>Card</option></select>
+              <select id="cart-payment"><option>Cash</option><option>M-Pesa</option><option>Card</option><option>On Credit</option></select>
             </div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
               <label class="small">Discount</label>
@@ -313,10 +975,7 @@
               <label class="small">%</label>
               <input id="cart-discount-pct" type="number" min="0" max="100" value="0" style="width:55px" title="Discount in percent" />
             </div>
-            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-              <div class="small">Total:</div>
-              <div style="font-size:20px;font-weight:800" id="cart-total">KES 0</div>
-            </div>
+            <div id="cart-total" style="margin-top:12px;">KES 0</div>
             <div style="margin-top:12px;display:flex;gap:8px">
               <button class="btn" id="cart-checkout">Checkout</button>
               <button class="btn secondary" id="cart-clear">Clear</button>
@@ -325,10 +984,15 @@
           </div>
         </div>
       `;
-      renderPOSCustomers();
-      renderCategories();
-      renderCatalog('');
+      renderPOSCustomers(); renderCategories(); renderCatalog('');
       document.getElementById('pos-search').oninput = function(){ renderCatalog(this.value); };
+      document.getElementById('pos-search').onkeydown = function(e){
+        if(e.key === 'Enter'){
+            const q = this.value.trim();
+            const product = State.products.find(p => p.sku === q);
+            if(product) { addToCart(product.id); this.value = ''; renderCatalog(''); } else { renderCatalog(q); }
+        }
+      };
       document.getElementById('pos-category').onchange = function(){ renderCatalog(document.getElementById('pos-search').value); };
       document.getElementById('pos-add-product').onclick = ()=>openProductModal();
       document.getElementById('cart-discount').oninput = renderCart;
@@ -338,495 +1002,481 @@
       document.getElementById('cart-drawer').onclick = openCashDrawer;
       document.getElementById('add-new-customer-btn').onclick = ()=>openCustomerModal();
       renderCart();
+      applyRole(); // Ensure the +Product button visibility is correct
     }
-    function renderPOSCustomers(){
-      const sel = document.getElementById('cart-customer'); if(!sel) return;
-      sel.innerHTML = `<option value="">Walk-in Customer</option>` + State.customers.map(c=>`<option value='${c.id}'>${escapeHtml(c.name)}</option>`).join('');
-    }
-    function renderCategories(){
-      const sel = document.getElementById('pos-category');
-      if(!sel) return;
-      const cats = ['all',...Array.from(new Set(State.products.map(p=>p.category).filter(Boolean)))];
-      sel.innerHTML = cats.map(c=>`<option value='${c}'>${c==='all'?'All categories':c}</option>`).join('');
-    }
-    function renderCatalog(q=''){
-      const el = document.getElementById('catalog');
-      if(!el) return;
-      const cat = document.getElementById('pos-category').value;
-      const list = State.products.filter(p=> (p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku||'').toLowerCase().includes(q.toLowerCase())) && (cat==='all' || p.category===cat));
-      if(list.length===0){ el.innerHTML = '<div class="small" style="padding:12px">No matching products</div>'; return; }
-      el.innerHTML = list.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #f1f5fb"><div><strong>${escapeHtml(p.name)}</strong><div class='small'>${p.sku||''} • ${p.category||''} • Stock: ${p.stock}</div></div><div style='text-align:right'><div style='font-weight:800'>${formatCurrency(p.price)}</div><div style='margin-top:6px'><button class='btn' onclick='addToCart("${p.id}")' ${p.stock<=0? 'disabled':''}>Add</button></div></div></div>`).join('');
-    }
-    window.addToCart = function(id){
-      const p = State.products.find(x=>x.id===id);
-      if(!p) return;
-      if(p.stock<=0){ alert('Out of stock'); return; }
-      const ex = Cart.find(c=>c.id===id);
-      if(ex){ if(ex.qty+1 > p.stock){ alert('Not enough stock'); return; } ex.qty++; } else Cart.push({id:p.id,name:p.name,price:p.price,qty:1});
-      renderCart();
-    }
-    function renderCart(){
-      var el = document.getElementById('cart-list'); if(!el) return;
-      el.innerHTML = Cart.map(it=>
-        `<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0'>
-          <div><strong>${escapeHtml(it.name)}</strong><div class='small'>x${it.qty}</div></div>
-          <div><div>${formatCurrency(it.price*it.qty)}</div>
-            <div style='margin-top:6px;display:flex;gap:6px'>
-              <button class='btn secondary' onclick='changeQty("${it.id}",-1)'>-</button>
-              <button class='btn secondary' onclick='changeQty("${it.id}",1)'>+</button>
-            </div>
-          </div>
-        </div>`
-      ).join('');
-      var subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0);
-      var discount = getCartDiscount();
-      var tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100);
-      var total = subtotal - discount + tax;
-      document.getElementById('cart-total').innerText = formatCurrency(total);
-    }
-    window.changeQty = function(id,delta){
-      const it = Cart.find(x=>x.id===id); if(!it) return; const p = State.products.find(x=>x.id===id);
-      it.qty += delta; if(it.qty<=0) Cart = Cart.filter(x=>x.id!==id); if(it.qty>p.stock) it.qty=p.stock; renderCart();
-    }
-    function clearCart(){ if(!confirm('Clear cart?')) return; Cart=[]; renderCart(); }
-    function getCartDiscount(){
-      var discount = Number(document.getElementById('cart-discount').value||0);
-      var discountPct = Number(document.getElementById('cart-discount-pct').value||0);
-      var subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0);
-      return discount + ((subtotal*discountPct)/100);
-    }
-    function startCheckout(){
-      if(Cart.length===0){ alert('Cart empty'); return; }
-      const subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0); const discount = getCartDiscount();
-      const tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100); const total = subtotal - discount + tax;
-      const customerId = document.getElementById('cart-customer').value || null;
-      const customer = State.customers.find(c=>c.id === customerId);
-      const payment = document.getElementById('cart-payment').value || 'Cash';
-      showModal(`Checkout`, `
-        <div>Subtotal: ${formatCurrency(subtotal)}</div>
-        <div>Discount: ${formatCurrency(discount)}</div>
-        <div>Tax: ${formatCurrency(tax)}</div>
-        <div style='font-weight:800'>Total: ${formatCurrency(total)}</div>
-        <div style='display:flex;gap:8px;margin-top:8px'><button class='btn' id='modal-save'>Confirm Payment</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-      `, ()=>{
-        if(payment==='M-Pesa'){
-          simulateMpesa(total).then(()=>{
-            completeSale(payment, customerId, discount);
-            closeModal();
-          });
-        } else {
-          completeSale(payment, customerId, discount);
-          closeModal();
-        }
-      }, null);
-    }
-    function simulateMpesa(total){
-      return new Promise(resolve=>{
-        showModal(`Lipa na M-Pesa`, `
-          <div class='small'>Enter phone</div>
-          <input id='mp-phone' placeholder='2547XXXXXXXX' />
-          <div style='display:flex;justify-content:flex-end;gap:8px;margin-top:8px'><button class='btn' id='mp-send'>Send STK</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-          `, (modal)=>{
-              const phone = document.getElementById('mp-phone').value.trim();
-              if(!phone){ alert('Phone required'); return; }
-              const modalContent = document.getElementById('modal-content');
-              modalContent.innerHTML = `<h3>Waiting for payment...</h3><div class='small'>Simulated STK push sent to ${escapeHtml(phone)}. Confirming...</div>`;
-              setTimeout(()=>{
-                modalContent.innerHTML = `<h3>Payment confirmed</h3><div class='small'>M-Pesa payment received</div><div style='display:flex;justify-content:flex-end;margin-top:8px'><button class='btn' id='modal-done'>Done</button></div>`;
-                modalContent.querySelector('#modal-done').onclick = ()=>{ modal.remove(); resolve(); }
-              }, 1200);
-          }, null
-        );
-      });
-    }
-    function completeSale(method, customerId, discount){
-      const subtotal = Cart.reduce((s,i)=>s+i.price*i.qty,0);
-      const tax = Math.round((subtotal - discount) * (State.settings.taxPercent||0)/100);
-      const total = subtotal - discount + tax;
-      Cart.forEach(it=>{ const p = State.products.find(x=>x.id===it.id); if(p) p.stock -= it.qty; });
-      const r = { number: State.nextReceipt++, date:new Date().toISOString(), cashier:currentUser.username, cashierName:currentUser.name||currentUser.username, items:JSON.parse(JSON.stringify(Cart)), subtotal,discount,tax,total,customerId,method };
-      State.receipts.push(r);
-      saveState();
-      renderAll();
-      showReceipt(r);
-      Cart=[];
-      renderCart();
-      closeModal();
-      alert('Sale recorded');
-    }
-    async function showReceipt(r){
-      const el = $('receipt-content');
-      const rep = $('report-content');
-      el.innerHTML = '';
-      rep.innerHTML = '';
-      const customer = r.customerId ? State.customers.find(c=>c.id===r.customerId) : null;
-      let html = `<div style='text-align:center;margin-bottom:8px'><div class='logo' style='width:72px;height:72px;border-radius:999px;margin:0 auto;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900'>SB</div><div style='font-weight:900;font-size:18px;margin-top:8px'>${escapeHtml(State.settings.businessName||'SmartBizz')}</div><div class='small'>${escapeHtml(State.settings.address||'')}</div><div class='small'>VAT: ${escapeHtml(State.settings.vat||'')}</div></div>`;
-      html += `<div class='small'>Receipt #: <strong>${r.number}</strong><br/>${new Date(r.date).toLocaleString()}<br/>Cashier: ${escapeHtml(r.cashierName)}<br/>Payment: ${escapeHtml(r.method||'Cash')}${customer?'<br/>Customer: '+escapeHtml(customer.name):''}</div><hr/>`;
-      r.items.forEach(i=> html += `<div style='display:flex;justify-content:space-between'><div>${escapeHtml(i.name)} x${i.qty}</div><div>${formatCurrency(i.price*i.qty)}</div></div>`);
-      html += `<hr/><div style='display:flex;justify-content:space-between'><div>Subtotal</div><div>${formatCurrency(r.subtotal)}</div></div>`;
-      html += `<div style='display:flex;justify-content:space-between'><div>Discount</div><div>${formatCurrency(r.discount||0)}</div></div>`;
-      html += `<div style='display:flex;justify-content:space-between'><div>Tax</div><div>${formatCurrency(r.tax)}</div></div>`;
-      html += `<div style='display:flex;justify-content:space-between;font-weight:800;font-size:16px'><div>Total</div><div>${formatCurrency(r.total)}</div></div>`;
-      html += `<div style='text-align:center;margin-top:8px;font-size:12px' class='small'>${escapeHtml(State.settings.businessName||'SmartBizz')} • ${escapeHtml(State.settings.address||'')} • VAT: ${escapeHtml(State.settings.vat||'')}</div>`;
-      html += `<div style='display:flex;gap:8px;justify-content:center;margin-top:10px'>
-          <button class='btn' id='printReceipt'>Print</button>
-          <button class='btn secondary' id='downloadPDF'>Download PDF</button>
-          ${currentUser && currentUser.role === 'admin' ? `<button class='btn secondary' onclick='openRefundModal(${JSON.stringify(r).replace(/'/g, "\\'")})'>Refund</button>` : ''}
-        </div>`;
-      el.innerHTML = html;
-      $('printable-content').classList.remove('hidden');
-      $('receipt-content').style.display = 'block';
-      $('report-content').style.display = 'none';
-      showReceiptWidthSelector(true);
-      setReceiptWidth(document.getElementById('receipt-width').value || "58mm");
-      document.getElementById('printReceipt').onclick = ()=>{ window.print(); };
-      document.getElementById('downloadPDF').onclick = ()=>downloadReceiptPDF();
-    }
-    async function downloadReceiptPDF(){ const container = $('receipt-content'); const canvas = await html2canvas(container, {scale:2}); const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const pdf = new jspdf.jsPDF({unit:'pt',format:[canvas.width, canvas.height]}); pdf.addImage(imgData,'PNG',0,0,canvas.width,canvas.height); const fname = `receipt_${new Date().toISOString().replace(/[:.]/g,'-')}.pdf`; pdf.save(fname); }
-    function openCashDrawer(){
-      var escposCmd = '\x1B\x70\x00\x19\xFF'; // May vary by printer model
-      var win = window.open('', '_blank');
-      win.document.write(`<pre>${escposCmd}</pre>`);
-      win.print();
-      win.close();
-      alert("Sent open drawer command to printer. Ensure your printer supports ESC/POS!");
-    }
-    window.openRefundModal = function(receipt){
-      const receiptItems = receipt.items.map(i => {
-        return `<label><input type="checkbox" checked data-product-id="${i.id}" data-qty="${i.qty}" data-price="${i.price}" data-name="${i.name}" /> ${i.name} (x${i.qty}) - ${formatCurrency(i.price * i.qty)}</label><br/>`;
-      }).join('');
-      showModal(`Refund Receipt #${receipt.number}`, `
-        <p>Select items to refund:</p>
-        <div>${receiptItems}</div>
-        <div style='margin-top:12px;display:flex;justify-content:flex-end;gap:8px'>
-          <button class='btn' id='modal-save'>Process Refund</button>
-          <button class='btn secondary' id='modal-cancel'>Cancel</button>
-        </div>
-      `, (modal)=>{
-        const selectedItems = [];
-        modal.querySelectorAll('input[type="checkbox"]:checked').forEach(input => {
-          selectedItems.push({
-            id: input.dataset.productId,
-            qty: parseInt(input.dataset.qty),
-            price: parseFloat(input.dataset.price),
-            name: input.dataset.name
-          });
-        });
-        if(selectedItems.length === 0){ alert('No items selected for refund.'); return; }
-        if(confirm('Are you sure you want to process this refund?')){
-          selectedItems.forEach(refundItem => {
-            const product = State.products.find(p => p.id === refundItem.id);
-            if(product) product.stock += refundItem.qty;
-          });
-          const refundTotal = selectedItems.reduce((sum, si) => sum + (si.price * si.qty), 0);
-          State.receipts.push({
-            number: `R${State.nextReceipt++}`,
-            date: new Date().toISOString(),
-            cashier: currentUser.username,
-            cashierName: currentUser.name || currentUser.username,
-            type: 'refund',
-            originalReceipt: receipt.number,
-            items: selectedItems,
-            total: -refundTotal
-          });
-          saveState();
-          modal.remove();
-          renderAll();
-          alert('Refund processed successfully.');
-        }
-      });
-    }
-
-    // --- Products ---
-    function renderProducts(){
-      const el = $('products-page');
-      el.innerHTML = `<h3>Products</h3>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <button class="btn" id="prod-new">+ New Product</button>
-          <button class="btn secondary" id="prod-export">Export CSV</button>
-        </div>
-        <div id="products-table"></div>`;
-      renderProductsTable();
-      document.getElementById('prod-new').onclick = ()=>openProductModal();
-      document.getElementById('prod-export').onclick = ()=>exportCSV('products');
-    }
-    function renderProductsTable(){ const el = $('products-table'); if(!el) return; let html = `<table><thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>`; State.products.forEach(p=>{ html += `<tr><td>${p.sku||''}</td><td>${escapeHtml(p.name)}</td><td>${p.category||''}</td><td>${formatCurrency(p.price)}</td><td style='${p.stock<=5?"color:red;":""}'>${p.stock}</td><td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openProductModal("${p.id}")'>Edit</button> <button class='btn' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td></tr>`; }); html += `</tbody></table>`; el.innerHTML = html; }
-    window.openProductModal = function(id){ const p = State.products.find(x=>x.id===id) || {id:null,sku:'',name:'',price:0,stock:0,category:''}; showModal(`${p.id? 'Edit':'New'} product`, `
-      <input id='m-sku' placeholder='SKU' value='${p.sku||''}' /><input id='m-name' placeholder='Name' value='${escapeHtml(p.name||'')}' /><input id='m-cat' placeholder='Category' value='${escapeHtml(p.category||'')}' /><input id='m-price' placeholder='Price' type='number' value='${p.price||0}' /><input id='m-stock' placeholder='Stock' type='number' value='${p.stock||0}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-    `, (modal)=>{
-      const sku = modal.querySelector('#m-sku').value.trim(); const name = modal.querySelector('#m-name').value.trim(); const cat = modal.querySelector('#m-cat').value.trim(); const price = Number(modal.querySelector('#m-price').value||0); const stock = Number(modal.querySelector('#m-stock').value||0);
-      if(!name){ alert('Name required'); return; }
-      if(p.id){ Object.assign(p,{sku,name,category:cat,price,stock}); } else { State.products.push({id:pid('p'),sku,name,category:cat,price,stock}); }
-      saveState(); modal.remove(); renderAll();
-    });}
-    window.deleteProduct = function(id){ if(!confirm('Delete product?')) return; State.products = State.products.filter(x=>x.id!==id); saveState(); renderAll(); }
     
-    // --- Inventory ---
-    function renderInventory(){
-      const el = $('inventory-page');
-      el.innerHTML = `<h3>Inventory</h3>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <button class="btn" id="inv-adjust">Adjust Stock</button>
-          <button class="btn secondary" id="inv-import">Import CSV</button>
-          <button class="btn secondary" id="inv-suppliers">Suppliers</button>
-        </div>
-        <div id="inventory-table"></div>`;
-      renderInventoryTable();
-      document.getElementById('inv-adjust').onclick = openAdjustModal;
-      document.getElementById('inv-import').onclick = importProductsCSV;
-      document.getElementById('inv-suppliers').onclick = renderSuppliers;
+    // Products
+    function renderProductsTable(){ 
+      const el = $('products-table'); 
+      if(!el) return; 
+      let html = `<div class="table-responsive"><table><thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Reorder</th><th>Actions</th></tr></thead><tbody>`; 
+      State.products.forEach(p=>{ 
+        html += `<tr>
+          <td>${p.sku||''}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td>${p.category||''}</td>
+          <td>${formatCurrency(p.price)}</td>
+          <td>${formatCurrency(p.costPrice||0)}</td>
+          <td style='${p.stock<=(p.reorderPoint||5)?"color:var(--error)":""}'>${p.stock}</td>
+          <td>${p.reorderPoint||5}</td>
+          <td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openProductModal("${p.id}")'>Edit</button> <button class='btn danger' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td>
+        </tr>`; 
+      }); 
+      html += `</tbody></table></div>`; // Closing the table-responsive div
+      el.innerHTML = html; 
     }
-    function renderInventoryTable(){ const el = $('inventory-table'); if(!el) return; let html = `<table><thead><tr><th>SKU</th><th>Name</th><th>Stock</th><th>Actions</th></tr></thead><tbody>`; State.products.forEach(p=> html += `<tr><td>${p.sku||''}</td><td>${escapeHtml(p.name)}</td><td style='${p.stock<=5?"color:red;":""}'>${p.stock}</td><td>${currentUser && currentUser.role==='admin' ? `<button class='btn secondary' onclick='openAdjustModal()'>Adjust</button> <button class='btn' onclick='deleteProduct("${p.id}")'>Delete</button>` : ''}</td></tr>`); html += `</tbody></table>`; el.innerHTML = html; }
-    window.openAdjustModal = function(){ showModal(`Stock adjustment`, `
-      <select id='m-adj-prod'>${State.products.map(p=>`<option value='${p.id}'>${escapeHtml(p.name)} (stock: ${p.stock})</option>`).join('')}</select>
-      <input id='m-adj-qty' placeholder='Qty (use negative to subtract)' type='number' value='0' />
-      <div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Apply</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-    `, (modal)=>{
-      const prodId = modal.querySelector('#m-adj-prod').value; const qty = Number(modal.querySelector('#m-adj-qty').value||0);
-      if(qty===0) {modal.remove(); return;}
-      const p = State.products.find(x=>x.id===prodId);
-      if(p) p.stock += qty;
-      saveState(); modal.remove(); renderAll();
-    }); }
+    window.deleteProduct = function(id){ if(!confirm('Delete product?')) return; State.products = State.products.filter(x=>x.id!==id); saveState(); renderAll(); logActivity('product_deleted', { id }); }
+    function renderProducts(){ 
+      const el = $('products-page'); 
+      el.innerHTML = `<h3>Products</h3> 
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
+          <button class="btn" id="prod-new">+ New Product</button> 
+          <button class="btn secondary" id="prod-export" onclick='exportCSV("products")'>Export CSV</button> 
+          <button class="btn secondary" id="prod-import" onclick='importProductsCSV()'>Import CSV</button> 
+        </div> 
+        <div id="products-table"></div>`; 
+      renderProductsTable(); 
+      document.getElementById('prod-new').onclick = ()=>openProductModal(); 
+    }
+    
+    // Inventory
+    function renderInventory(){
+        const el = $('inventory-page');
+        el.innerHTML = `<h3>Inventory Management</h3>
+            <p>Monitor current stock levels and perform stock adjustments.</p>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+                <button class="btn" id="stock-adjust">+ Stock Adjustment</button>
+            </div>
+            <h4>Stock Levels & Low Stock Alert</h4>
+            <div id="inventory-list"></div>`;
+        
+        $('stock-adjust').onclick = openStockAdjustmentModal;
+        renderInventoryList();
+    }
+    function renderInventoryList(){
+        const el = $('inventory-list');
+        const list = State.products.sort((a, b) => a.stock - b.stock);
+
+        // Table is wrapped in .table-responsive
+        el.innerHTML = `<div class="table-responsive"><table><thead><tr><th>SKU</th><th>Name</th><th>Stock</th><th>Reorder Point</th><th>Status</th><th>Last Cost</th></tr></thead><tbody>
+          ${list.map(p => `
+            <tr style="${p.stock <= (p.reorderPoint || 5) ? 'background:var(--brand-light)' : ''}">
+              <td>${p.sku || ''}</td>
+              <td>${escapeHtml(p.name)}</td>
+              <td>${p.stock}</td>
+              <td>${p.reorderPoint || 5}</td>
+              <td style='color:${p.stock <= (p.reorderPoint || 5) ? 'var(--error)' : 'var(--success)'}'>
+                ${p.stock <= (p.reorderPoint || 5) ? 'LOW STOCK' : 'OK'}
+              </td>
+              <td>${formatCurrency(p.costPrice || 0)}</td>
+            </tr>
+          `).join('')}
+        </tbody></table></div>`;
+    }
+    
+    // Suppliers
     function renderSuppliers(){
-      const el = $('inventory-page');
+      const el = $('suppliers-page');
       el.innerHTML = `<h3>Suppliers</h3>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button class="btn" id="supp-new">+ New Supplier</button>
         </div>
         <div id="suppliers-table"></div>`;
       const table = $('suppliers-table');
-      table.innerHTML = `<table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>
-      ${State.suppliers.map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.contact||''}</td><td><button class='btn secondary' onclick='openSupplierModal("${s.id}")'>Edit</button> <button class='btn' onclick='deleteSupplier("${s.id}")'>Delete</button></td></tr>`).join('')}
-      </tbody></table>`;
+      // Table is wrapped in .table-responsive
+      table.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>
+        ${State.suppliers.map(s=>`<tr><td>${escapeHtml(s.name)}</td><td>${s.contact||''}</td><td><button class='btn secondary' onclick='openSupplierModal("${s.id}")'>Edit</button> <button class='btn danger' onclick='deleteSupplier("${s.id}")'>Delete</button></td></tr>`).join('')}
+      </tbody></table></div>`;
       $('supp-new').onclick = ()=>openSupplierModal();
     }
-    window.openSupplierModal = function(id){ const s = State.suppliers.find(x=>x.id===id) || {id:null, name:'', contact:''}; showModal(`${s.id?'Edit':'New'} Supplier`, `
-      <input id='s-name' placeholder='Name' value='${escapeHtml(s.name||'')}' /><input id='s-contact' placeholder='Contact Info' value='${escapeHtml(s.contact||'')}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-    `, (modal)=>{
-      const name = modal.querySelector('#s-name').value.trim(); const contact = modal.querySelector('#s-contact').value.trim();
-      if(!name){ alert('Name required'); return; }
-      if(s.id){ Object.assign(s,{name,contact}); } else { State.suppliers.push({id:pid('s'),name,contact}); }
-      saveState(); modal.remove(); renderSuppliers();
-    }); }
-    window.deleteSupplier = function(id){ if(!confirm('Delete supplier?')) return; State.suppliers = State.suppliers.filter(x=>x.id!==id); saveState(); renderSuppliers(); }
+    
+    // Purchases / Stock In
+    function renderPurchases(){
+        const el = $('purchases-page');
+        el.innerHTML = `<h3>Purchases (Stock In)</h3>
+          <p>Track incoming stock and cost prices via Purchase Orders.</p>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="btn" id="po-new">+ Create New PO</button>
+          </div>
+          <h4>Recent Purchase Orders</h4>
+          <div id="purchases-table"></div>`;
+        
+        $('po-new').onclick = ()=>openPurchaseOrderModal();
+        
+        const table = $('purchases-table');
+        // Table is wrapped in .table-responsive
+        table.innerHTML = `<div class="table-responsive"><table><thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Total Cost</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+          ${State.purchases.slice(-10).reverse().map(p=>`
+            <tr>
+              <td>#PO-${p.number}</td>
+              <td>${escapeHtml(State.suppliers.find(s => s.id === p.supplierId)?.name || 'N/A')}</td>
+              <td>${new Date(p.date).toLocaleDateString()}</td>
+              <td>${formatCurrency(p.totalCost)}</td>
+              <td><strong style='color:${p.status === 'Received' ? 'var(--success)' : 'var(--error)'}'>${p.status}</strong></td>
+              <td><button class='btn secondary' onclick='openPurchaseOrderModal("${p.id}")'>View/Receive</button></td>
+            </tr>
+          `).join('')}
+        </tbody></table></div>`;
+    }
 
-    // --- Customers ---
-    function renderCustomers(){
-      const el = $('customers-page');
-      el.innerHTML = `<h3>Customers</h3>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <button class="btn" id="cust-new">+ New Customer</button>
-        </div>
-        <div id="customers-table"></div>`;
-      renderCustomersTable();
-      document.getElementById('cust-new').onclick = ()=>openCustomerModal();
+    // Expenses
+    function renderExpenses(){
+        const el = $('expenses-page');
+        el.innerHTML = `<h3>Business Expenses</h3>
+            <p>Record operational expenses.</p>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+                <button class="btn" id="exp-new">+ New Expense</button>
+            </div>
+            <h4>Expense List</h4>
+            <div id="expenses-table"></div>`;
+        
+        $('exp-new').onclick = ()=>openExpenseModal();
+        
+        const table = $('expenses-table');
+        // Table is wrapped in .table-responsive
+        table.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead><tbody>
+          ${State.expenses.slice(-20).reverse().map(e=>`
+            <tr>
+              <td>${new Date(e.date).toLocaleDateString()}</td>
+              <td>${escapeHtml(e.category)}</td>
+              <td>${escapeHtml(e.description)}</td>
+              <td>${formatCurrency(e.amount)}</td>
+              <td><button class='btn secondary' onclick='openExpenseModal("${e.id}")'>Edit</button> <button class='btn danger' onclick='deleteExpense("${e.id}")'>Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody></table></div>`;
     }
-    function renderCustomersTable(){
-      const el = $('customers-table'); if(!el) return;
-      let html = `<table><thead><tr><th>Name</th><th>Contact</th><th>Actions</th></tr></thead><tbody>`;
-      State.customers.forEach(c=>{ html += `<tr><td>${escapeHtml(c.name)}</td><td>${c.contact||''}</td><td><button class='btn secondary' onclick='openCustomerModal("${c.id}")'>Edit</button> <button class='btn' onclick='deleteCustomer("${c.id}")'>Delete</button></td></tr>`; });
-      html += `</tbody></table>`; el.innerHTML = html;
-    }
-    window.openCustomerModal = function(id){
-      const c = State.customers.find(x=>x.id===id) || {id:null, name:'', contact:''};
-      showModal(`${c.id? 'Edit':'New'} Customer`, `
-        <input id='c-name' placeholder='Name' value='${escapeHtml(c.name||'')}' /><input id='c-contact' placeholder='Contact Info' value='${escapeHtml(c.contact||'')}' /><div style='display:flex;gap:8px;justify-content:flex-end'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-      `, (modal)=>{
-        const name = modal.querySelector('#c-name').value.trim(); const contact = modal.querySelector('#c-contact').value.trim();
-        if(!name){ alert('Name required'); return; }
-        if(c.id){ Object.assign(c,{name,contact}); } else { State.customers.push({id:pid('c'),name,contact}); }
-        saveState(); modal.remove(); renderAll();
-      });
-    }
-    window.deleteCustomer = function(id){ if(!confirm('Delete customer?')) return; State.customers = State.customers.filter(x=>x.id!==id); saveState(); renderAll(); }
     
-    // --- Employees ---
-    function renderEmployees(){
-      const el = $('employees-page');
-      el.innerHTML = `<h3>Employees</h3>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-          <button class="btn" id="emp-new">+ New Employee</button>
-        </div>
-        <div id="employees-table"></div>`;
-      renderEmployeesTable();
-      document.getElementById('emp-new').onclick = ()=>openEmployeeModal();
+    // Customers
+    function renderCustomersTable(){ 
+        const el = $('customers-table'); 
+        if(!el) return; 
+        let html = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Contact</th><th>Credit</th><th>Actions</th></tr></thead><tbody>`; 
+        State.customers.forEach(c=>{ 
+            html += `<tr><td>${escapeHtml(c.name)}</td><td>${c.contact||''}</td><td><span style='color:${c.creditBalance > 0 ? 'var(--error)' : 'var(--success)'}'>${formatCurrency(c.creditBalance)}</span></td><td><button class='btn secondary' onclick='openCustomerModal("${c.id}")'>Edit</button> <button class='btn danger' onclick='deleteCustomer("${c.id}")'>Delete</button></td></tr>`; 
+        }); 
+        html += `</tbody></table></div>`; // Closing the table-responsive div
+        el.innerHTML = html; 
     }
-    function renderEmployeesTable(){
-      const el = $('employees-table'); if(!el) return;
-      let html = `<table><thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
-      State.users.forEach(u=>{ html += `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.username)}</td><td>${escapeHtml(u.role)}</td><td><button class='btn secondary' onclick='openEmployeeModal("${u.id}")'>Edit</button> <button class='btn' onclick='deleteEmployee("${u.id}")'>Delete</button></td></tr>`; });
-      html += `</tbody></table>`; el.innerHTML = html;
+    function renderCustomers(){ 
+      const el = $('customers-page'); 
+      el.innerHTML = `<h3>Customers</h3> 
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
+          <button class="btn" id="cust-new">+ New Customer</button> 
+          <button class="btn secondary" id="cust-export" onclick='exportCSV("customers")'>Export CSV</button> 
+        </div> 
+        <div id="customers-table"></div>`; 
+      renderCustomersTable(); 
+      document.getElementById('cust-new').onclick = ()=>openCustomerModal(); 
     }
-    window.openEmployeeModal = function(id){
-      const u = State.users.find(x=>x.id===id) || {id:null, name:'', username:'', role:'user', permissions:{}};
-      const isNew = !u.id;
-      const pages = ['pos', 'products', 'inventory', 'customers', 'reports', 'zreport'];
-      let permissionsHtml = '';
-      if (u.role === 'user') {
-        permissionsHtml = `<div style="margin-top:12px"><h4>Permissions</h4><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;">${
-          pages.map(page => `<label><input type="checkbox" data-permission="${page}" ${u.permissions[page] ? 'checked' : ''}> ${page.charAt(0).toUpperCase() + page.slice(1)}</label>`).join('')
-        }</div></div>`;
-      }
-      showModal(`${isNew?'New':'Edit'} Employee`, `
-        <input id='u-name' placeholder='Full Name' value='${escapeHtml(u.name||'')}' /><input id='u-username' placeholder='Username' value='${escapeHtml(u.username||'')}' />
-        <input id='u-pass' placeholder='Password${isNew ? '' : ' (leave blank to not change)'}' type='password' /><input id='u-pass-confirm' placeholder='Confirm Password' type='password' />
-        <select id='u-role' ${!isNew ? `onchange="this.closest('.modal-wrapper').querySelector('#permissions-section').style.display = this.value === 'user' ? 'block' : 'none'"` : ''}>
-          <option value='user'>User</option><option value='admin'>Admin</option>
-        </select>
-        <div id="permissions-section" style="${u.role === 'admin' ? 'display:none;' : ''}">
-          ${permissionsHtml}
-        </div>
-        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'><button class='btn' id='modal-save'>Save</button><button class='btn secondary' id='modal-cancel'>Cancel</button></div>
-      `, async (modal)=>{
-        const name = modal.querySelector('#u-name').value.trim(); const username = modal.querySelector('#u-username').value.trim(); const role = modal.querySelector('#u-role').value; const pass = modal.querySelector('#u-pass').value; const passConfirm = modal.querySelector('#u-pass-confirm').value;
-        if(!name||!username){ alert('Name and username required'); return; }
-        if(isNew && (!pass || pass !== passConfirm)){ alert('Passwords must match for new users'); return; }
-        const userPermissions = {};
-        if (role === 'user') {
-          modal.querySelectorAll('[data-permission]').forEach(cb => { userPermissions[cb.dataset.permission] = cb.checked; });
-        }
-        if(u.id){ Object.assign(u,{name,username,role,permissions:userPermissions}); if(pass) u.passwordHash = await sha256Hex(pass); }
-        else { const hash = await sha256Hex(pass); State.users.push({id:pid('u'),username,passwordHash:hash,role,name,permissions:userPermissions}); }
-        saveState(); modal.remove(); renderAll();
+
+    // Employees (Users)
+    function renderEmployeesTable(){ 
+      const el = $('employees-table');
+      if(!el) return;
+      let html = `<div class="table-responsive"><table><thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
+      State.users.forEach(u => {
+        html += `<tr>
+            <td>${escapeHtml(u.name || '')}</td>
+            <td>${escapeHtml(u.username)}</td>
+            <td>${u.role.toUpperCase()}</td>
+            <td><button class='btn secondary' onclick='openEmployeeModal("${u.id}")'>Edit</button> ${u.id !== currentUser.id ? `<button class='btn danger' onclick='deleteEmployee("${u.id}")'>Delete</button>` : ''}</td>
+        </tr>`;
       });
-      if(u.role) $('u-role').value = u.role;
+      html += `</tbody></table></div>`; // Closing the table-responsive div
+      el.innerHTML = html;
     }
-    window.deleteEmployee = function(id){ if(State.users.find(u=>u.id===id).role==='admin' && State.users.filter(u=>u.role==='admin').length===1){ alert('Cannot delete the last admin user'); return; } if(!confirm('Delete employee?')) return; State.users = State.users.filter(x=>x.id!==id); saveState(); renderAll(); }
+    window.deleteEmployee = function(id){ 
+      if(!confirm('Delete this employee?')) return; 
+      State.users = State.users.filter(x => x.id !== id); 
+      saveState(); 
+      renderAll(); 
+      logActivity('employee_deleted', { id }); 
+    }
+    function renderEmployees(){ 
+      const el = $('employees-page'); 
+      el.innerHTML = `<h3>Employees</h3> 
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"> 
+          <button class="btn" id="emp-new">+ New Employee</button> 
+        </div> 
+        <div id="employees-table"></div>`; 
+      renderEmployeesTable(); 
+      document.getElementById('emp-new').onclick = ()=>openEmployeeModal(); 
+    }
     
-    // --- Reports ---
+    // Reports
     function renderReports(){
-      const el = $('reports-page');
-      const totalSales = State.receipts.filter(r=>r.type!=='refund').reduce((s,r)=>s+r.total,0);
-      const totalRefunds = State.receipts.filter(r=>r.type==='refund').reduce((s,r)=>s+r.total,0);
-      const todaySales = State.receipts.filter(r=> isSameDay(new Date(r.date), new Date()) && r.type!=='refund').reduce((s,r)=>s+r.total,0);
-      const topSelling = State.receipts.reduce((agg, r) => { r.items.forEach(item => { if(!agg[item.name]) agg[item.name] = {qty:0, total:0}; agg[item.name].qty += item.qty; agg[item.name].total += item.qty * item.price; }); return agg; }, {});
-      const topSellingList = Object.entries(topSelling).sort(([,a],[,b])=>b.total-a.total);
-      
-      el.innerHTML = `<h3>Reports</h3>
-        <div class="grid cols-3">
-          <div class='card'>Total Sales<br/><strong>${formatCurrency(totalSales)}</strong></div>
-          <div class='card'>Total Refunds<br/><strong style='color:red'>${formatCurrency(totalRefunds)}</strong></div>
-          <div class='card'>Today's Sales<br/><strong>${formatCurrency(todaySales)}</strong></div>
-        </div>
-        <div class="card">
-          <h4>Top Selling Products</h4>
-          <table><thead><tr><th>Product</th><th>Qty Sold</th><th>Total Revenue</th></tr></thead><tbody>
-          ${topSellingList.map(([name, data]) => `<tr><td>${escapeHtml(name)}</td><td>${data.qty}</td><td>${formatCurrency(data.total)}</td></tr>`).join('')}
-          </tbody></table>
-        </div>
-        <div class="card">
-          <h4>Sales History</h4>
-          <div id="sales-history-table"></div>
-        </div>`;
-      renderSalesHistoryTable();
+        const el = $('reports-page');
+        const salesData = State.receipts.map(r => ({
+            date: new Date(r.date).toLocaleDateString(),
+            total: r.total,
+            profit: r.items.reduce((s, i) => s + (i.profit || 0), 0),
+            method: r.paymentMethod,
+            cashier: r.cashier
+        }));
+
+        el.innerHTML = `<h3>Reports</h3>
+            <div class="grid cols-3">
+                <div class="card"><h4>Sales Trend (Last 7 Days)</h4><canvas id="sales-chart"></canvas></div>
+                <div class="card"><h4>Payment Methods</h4><canvas id="payment-chart"></canvas></div>
+                <div class="card"><h4>Sales by Employee</h4><canvas id="employee-chart"></canvas></div>
+            </div>
+            
+            <div class="card">
+                <h4>All Time Summary</h4>
+                <div class="grid cols-3">
+                    <div class="small">Total Sales: <strong style="font-size:18px;color:var(--brand)">${formatCurrency(salesData.reduce((s,d)=>s+d.total, 0))}</strong></div>
+                    <div class="small">Total Profit: <strong style="font-size:18px;color:var(--success)">${formatCurrency(salesData.reduce((s,d)=>s+d.profit, 0))}</strong></div>
+                    <div class="small">Average Receipt: <strong style="font-size:18px;">${formatCurrency(salesData.reduce((s,d)=>s+d.total, 0)/salesData.length || 0)}</strong></div>
+                </div>
+            </div>
+        `;
+
+        renderSalesChart(salesData);
+        renderPaymentChart(salesData);
+        renderEmployeeChart(salesData);
     }
-    function renderSalesHistoryTable(){
-      const el = $('sales-history-table'); if(!el) return;
-      let html = `<table><thead><tr><th>Receipt #</th><th>Date</th><th>Cashier</th><th>Customer</th><th>Total</th><th>Actions</th></tr></thead><tbody>`;
-      State.receipts.slice().reverse().forEach(r => {
-        const customer = r.customerId ? State.customers.find(c=>c.id === r.customerId) : null;
-        html += `<tr><td>${r.number}</td><td>${new Date(r.date).toLocaleString()}</td><td>${r.cashierName}</td><td>${customer?escapeHtml(customer.name):'Walk-in'}</td><td style='${r.total<0?"color:red":""}'>${formatCurrency(r.total)}</td><td><button class='btn secondary' onclick='showReceipt(${JSON.stringify(r).replace(/'/g, "\\'")})'>View</button></td></tr>`;
-      });
-      html += `</tbody></table>`; el.innerHTML = html;
+    function renderSalesChart(salesData) {
+        const last7Days = {};
+        for (let i = 0; i < 7; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            last7Days[date.toLocaleDateString()] = { sales: 0, profit: 0 };
+        }
+
+        salesData.forEach(d => {
+            const dateStr = new Date(d.date).toLocaleDateString();
+            if (last7Days.hasOwnProperty(dateStr)) {
+                last7Days[dateStr].sales += d.total;
+                last7Days[dateStr].profit += d.profit;
+            }
+        });
+
+        const labels = Object.keys(last7Days).reverse();
+        const sales = labels.map(l => last7Days[l].sales);
+        const profit = labels.map(l => last7Days[l].profit);
+
+        new Chart($('sales-chart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Sales', data: sales, backgroundColor: 'var(--brand)' },
+                    { label: 'Profit', data: profit, backgroundColor: 'var(--success)' }
+                ]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+    }
+    function renderPaymentChart(salesData) {
+        const paymentCounts = salesData.reduce((acc, d) => {
+            acc[d.method] = (acc[d.method] || 0) + 1;
+            return acc;
+        }, {});
+
+        new Chart($('payment-chart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(paymentCounts),
+                datasets: [{
+                    data: Object.values(paymentCounts),
+                    backgroundColor: ['#4c51bf', '#059669', '#e53e3e', '#f59e0b'],
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+    function renderEmployeeChart(salesData) {
+        const employeeSales = salesData.reduce((acc, d) => {
+            acc[d.cashier] = (acc[d.cashier] || 0) + d.total;
+            return acc;
+        }, {});
+
+        new Chart($('employee-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(employeeSales),
+                datasets: [{
+                    data: Object.values(employeeSales),
+                    backgroundColor: ['#4c51bf', '#059669', '#f59e0b', '#60a5fa'],
+                }]
+            },
+            options: { responsive: true }
+        });
     }
 
-    // --- Z-Report ---
+    // Z-Report
     function renderZReport(){
-      const el = $('zreport-page');
-      el.innerHTML = `<h3>Z-Report</h3><p>Daily sales summary report. This should be run at the end of the day.</p><button class="btn" onclick="generateZReport()">Generate Today's Z-Report</button><div id="z-report-content" style="margin-top:12px"></div>`;
+        const el = $('zreport-page');
+        const now = new Date();
+        const totalSales = State.receipts.reduce((s,r)=>s+r.total, 0);
+        const totalProfit = State.receipts.reduce((s,r)=>s+r.items.reduce((s,i)=>s+(i.profit||0),0), 0);
+        const totalExpenses = State.expenses.reduce((s,e)=>s+e.amount, 0);
+        const netProfit = totalProfit - totalExpenses;
+        const paymentSummary = State.receipts.reduce((acc, r) => {
+            acc[r.paymentMethod] = (acc[r.paymentMethod] || 0) + r.total;
+            return acc;
+        }, {});
+        const cashierSummary = State.receipts.reduce((acc, r) => {
+            acc[r.cashier] = (acc[r.cashier] || 0) + r.total;
+            return acc;
+        }, {});
+
+        el.innerHTML = `<h3>Z-Report / End-of-Day Report</h3>
+            <p>Report generated on: ${now.toLocaleString()}</p>
+            <div class="card">
+                <h4>Financial Summary (All Time)</h4>
+                <div class="grid cols-3">
+                    <div class="small">Gross Sales: <strong style="font-size:18px;color:var(--brand)">${formatCurrency(totalSales)}</strong></div>
+                    <div class="small">Total Expenses: <strong style="font-size:18px;color:var(--error)">${formatCurrency(totalExpenses)}</strong></div>
+                    <div class="small">Net Profit: <strong style="font-size:18px;color:var(--success)">${formatCurrency(netProfit)}</strong></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4>Payment Method Breakdown</h4>
+                <div class="table-responsive"><table><thead><tr><th>Method</th><th>Amount</th></tr></thead><tbody>
+                    ${Object.entries(paymentSummary).map(([method, amount]) => `
+                        <tr><td>${method}</td><td>${formatCurrency(amount)}</td></tr>
+                    `).join('')}
+                    <tr><td style="font-weight:700">TOTAL</td><td style="font-weight:700">${formatCurrency(totalSales)}</td></tr>
+                </tbody></table></div>
+            </div>
+
+            <div class="card">
+                <h4>Sales by Cashier</h4>
+                <div class="table-responsive"><table><thead><tr><th>Cashier</th><th>Amount</th></tr></thead><tbody>
+                    ${Object.entries(cashierSummary).map(([cashier, amount]) => `
+                        <tr><td>${cashier}</td><td>${formatCurrency(amount)}</td></tr>
+                    `).join('')}
+                </tbody></table></div>
+            </div>
+            <button class='btn danger' onclick='promptForZReportLock()'>Finalize Z-Report and Reset Daily Data (Simulation)</button>
+        `;
     }
-    function generateZReport(){
-      const today = new Date();
-      const salesToday = State.receipts.filter(r => isSameDay(new Date(r.date), today));
-      const totalSales = salesToday.filter(r=>r.type!=='refund').reduce((sum, r) => sum + r.total, 0);
-      const totalRefunds = salesToday.filter(r=>r.type==='refund').reduce((sum, r) => sum + r.total, 0);
-      const cashierSales = salesToday.reduce((agg, r) => { if(!agg[r.cashierName]) agg[r.cashierName] = 0; agg[r.cashierName] += r.total; return agg; }, {});
-      const el = $('report-content');
-      el.innerHTML = `
-        <div style='text-align:center;margin-bottom:8px'><div class='logo' style='width:72px;height:72px;border-radius:999px;margin:0 auto;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900'>SB</div><div style='font-weight:900;font-size:18px;margin-top:8px'>${escapeHtml(State.settings.businessName||'SmartBizz')}</div><div class='small'>${escapeHtml(State.settings.address||'')}</div><div class='small'>VAT: ${escapeHtml(State.settings.vat||'')}</div></div>
-        <div style='text-align:center;font-weight:bold'>Z-Report for ${today.toLocaleDateString()}</div>
-        <div style='margin-top:12px;display:flex;justify-content:space-between'><span>Gross Sales:</span><span>${formatCurrency(totalSales)}</span></div>
-        <div style='display:flex;justify-content:space-between'><span>Refunds:</span><span style='color:red'>${formatCurrency(totalRefunds)}</span></div>
-        <hr>
-        <div style='display:flex;justify-content:space-between;font-weight:bold'><span>Net Sales:</span><span>${formatCurrency(totalSales + totalRefunds)}</span></div>
-        <h5 style='margin-top:12px;margin-bottom:0'>Sales by Cashier:</h5>
-        <div style='margin-top:4px'>
-          ${Object.entries(cashierSales).map(([cashier, sales]) => `<div style='display:flex;justify-content:space-between;font-size:12px;padding:2px 0'><span>${cashier}:</span><span>${formatCurrency(sales)}</span></div>`).join('')}
-        </div>
-        <div style='text-align:center;margin-top:12px;font-size:12px' class='small'>--- End of Report ---</div>
-        <div style='display:flex;gap:8px;justify-content:center;margin-top:10px'>
-          <button class='btn' id='printReport'>Print</button>
-        </div>
-      `;
-      $('printable-content').classList.remove('hidden');
-      $('receipt-content').style.display = 'none';
-      $('report-content').style.display = 'block';
-      showReceiptWidthSelector(false); 
-      document.getElementById('printReport').onclick = ()=>{ window.print(); };
+    window.promptForZReportLock = function(){
+        showToast('Z-Report finalization is a critical operation. In a real system, this would lock the sales period and potentially involve a final cash reconciliation.', 'info', 5000);
+    }
+    
+    // Activity Log
+    function renderActivityLog(){
+        const el = $('activitylog-page');
+        el.innerHTML = `<h3>Activity Log</h3>
+            <p>Recent system and user actions. (Showing last ${State.activityLog.length} entries)</p>
+            <div id="activity-list"></div>`;
+        
+        const listEl = $('activity-list');
+        listEl.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody>
+          ${State.activityLog.slice().reverse().map(a=>`
+            <tr>
+              <td>${new Date(a.timestamp).toLocaleString()}</td>
+              <td>${escapeHtml(a.userName)}</td>
+              <td>${escapeHtml(a.action)}</td>
+              <td class="small">${escapeHtml(a.details)}</td>
+            </tr>
+          `).join('')}
+        </tbody></table></div>`;
     }
 
-    // --- Settings ---
+    // Settings
     function renderSettings(){
-      const el = $('settings-page');
-      const s = State.settings;
-      el.innerHTML = `<h3>Settings</h3>
-        <div class='card' style='display:grid;gap:8px'>
-          <label>Business Name</label><input id='set-businessName' value='${escapeHtml(s.businessName||'')}' />
-          <label>Address</label><input id='set-address' value='${escapeHtml(s.address||'')}' />
-          <label>VAT/Tax No.</label><input id='set-vat' value='${escapeHtml(s.vat||'')}' />
-          <label>Currency</label><input id='set-currency' value='${escapeHtml(s.currency||'')}' />
-          <label>Tax Percent (%)</label><input id='set-taxPercent' type='number' value='${s.taxPercent||0}' />
-          <button class='btn' id='set-save'>Save Settings</button>
-        </div>
-        <div class='card' style="margin-top:18px">
-          <h4>Danger Zone</h4>
-          <p>This action will permanently delete all data from the app. There is no undo.</p>
-          <button class='btn' style="background:red" onclick="factoryReset()">Factory Reset</button>
-        </div>`;
-      $('set-save').onclick = ()=>{
-        State.settings = {
-          businessName: $('set-businessName').value.trim(),
-          address: $('set-address').value.trim(),
-          vat: $('set-vat').value.trim(),
-          currency: $('set-currency').value.trim(),
-          taxPercent: Number($('set-taxPercent').value||0)
-        };
+        const s = State.settings;
+        const el = $('settings-page');
+        el.innerHTML = `<h3>Settings</h3>
+            <h4>Business Details & General</h4>
+            <div class="grid cols-3" style="max-width:800px">
+                <label>Business Name</label><input id="set-name" value="${escapeHtml(s.businessName)}" />
+                <label>Address</label><input id="set-address" value="${escapeHtml(s.address)}" />
+                <label>VAT/Tax No</label><input id="set-vat" value="${escapeHtml(s.vat)}" />
+                <label>Currency</label><input id="set-currency" value="${escapeHtml(s.currency)}" />
+                <label>Tax Percent (%)</label><input type="number" id="set-tax" value="${s.taxPercent}" min="0" max="100" />
+                <label>Session Timeout (ms)</label><input type="number" id="set-timeout" value="${s.sessionTimeout}" min="60000" />
+            </div>
+            <button class="btn" id="save-settings" style="margin-top:12px">Save Settings</button>
+
+            <h4 style="margin-top:20px">Security & Maintenance</h4>
+            <div class="grid cols-3" style="max-width:800px; grid-template-columns: 1fr 1fr;">
+                <label>Toggle Dark Mode</label><button id="set-dark-mode" class="btn secondary">Toggle</button>
+                <label style="color:var(--error); font-weight:700;">Factory Reset App</label>
+                <button class="btn danger" id="factory-reset-btn">⚠️ Factory Reset</button>
+            </div>
+        `;
+        
+        $('save-settings').onclick = saveSettings;
+        $('set-dark-mode').onclick = toggleDarkMode;
+        $('factory-reset-btn').onclick = factoryReset; // Attached new function
+    }
+
+    function saveSettings(){
+        State.settings.businessName = $('set-name').value;
+        State.settings.address = $('set-address').value;
+        State.settings.vat = $('set-vat').value;
+        State.settings.currency = $('set-currency').value.toUpperCase();
+        State.settings.taxPercent = Number($('set-tax').value);
+        State.settings.sessionTimeout = Number($('set-timeout').value);
         saveState();
-        alert('Settings saved!');
-        renderAll();
-      };
+        startSessionTimeout();
+        showToast('Settings saved successfully!', 'success');
+        logActivity('settings_updated', { settings: State.settings });
     }
 
-    function factoryReset(){
-      if(confirm('WARNING: Are you sure you want to perform a factory reset? This will PERMANENTLY delete ALL app data, including sales history, products, and users. This action cannot be undone.')){
-        localStorage.removeItem(STORAGE_KEY);
-        window.location.reload();
-      }
-    }
-
-    // --- CSV Functions (import/export) ---
-    function exportCSV(type){
-      let data;
-      let headers;
-      if(type === 'products'){
-        data = State.products;
-        headers = ['id','sku','name','category','price','stock'];
-      } else if(type === 'customers'){
-        data = State.customers;
-        headers = ['id','name','contact'];
+    // --- CSV Export/Import ---
+    function exportCSV(type) {
+      let data, headers, fileName;
+      if (type === 'products') {
+        data = State.products.map(p => ({ 
+            sku: p.sku, 
+            name: p.name, 
+            category: p.category, 
+            price: p.price, 
+            costPrice: p.costPrice,
+            stock: p.stock,
+            reorderPoint: p.reorderPoint
+        }));
+        headers = ['sku', 'name', 'category', 'price', 'costPrice', 'stock', 'reorderPoint'];
+        fileName = 'products_export.csv';
+      } else if (type === 'customers') {
+        data = State.customers.map(c => ({ 
+            name: c.name, 
+            contact: c.contact, 
+            address: c.address, 
+            creditBalance: c.creditBalance
+        }));
+        headers = ['name', 'contact', 'address', 'creditBalance'];
+        fileName = 'customers_export.csv';
       } else {
-        alert('Invalid export type'); return;
+        showToast('Invalid export type.', 'error');
+        return;
       }
-      const csv = [headers.join(',')].concat(data.map(row => headers.map(h => `"${(row[h]||'').toString().replace(/"/g, '""')}"`).join(','))).join('\n');
-      const blob = new Blob([csv], {type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${type}_export_${new Date().toISOString()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+
+      if (data.length === 0) {
+        showToast('No data to export.', 'info');
+        return;
+      }
+
+      const csvRows = [];
+      csvRows.push(headers.join(','));
+
+      for (const row of data) {
+        const values = headers.map(header => {
+          const escaped = ('' + row[header]).replace(/"/g, '\\"'); // Escape quotes
+          return `"${escaped}"`;
+        });
+        csvRows.push(values.join(','));
+      }
+
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+      logActivity(`exported_${type}`, { count: data.length });
     }
-    function importProductsCSV(){
-      const modal = showModal('Import Products', `
-        <p>Upload a CSV file with columns: sku,name,category,price,stock.</p>
+
+    window.importProductsCSV = function() {
+      showModal('Import Products', `
+        <p>Upload a CSV file with columns: <strong>sku, name, category, price, stock, costPrice, reorderPoint</strong>. Only the first three are mandatory.</p>
         <input type="file" id="import-file" accept=".csv" />
         <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
           <button class='btn' id='modal-save'>Import</button>
@@ -839,24 +1489,477 @@
         reader.onload = (e) => {
           const text = e.target.result;
           const lines = text.split('\n').filter(l => l.trim() !== '');
-          const headers = lines[0].split(',').map(h=>h.trim());
+          const headers = lines[0].toLowerCase().split(',').map(h=>h.trim());
           const newProducts = [];
           for(let i = 1; i < lines.length; i++){
             const values = lines[i].split(',').map(v=>v.trim());
             const p = {};
             for(let j = 0; j < headers.length; j++){ p[headers[j]] = values[j]; }
-            if(p.sku && p.name && p.price){ newProducts.push({id:pid('p'), sku:p.sku, name:p.name, category:p.category, price:Number(p.price), stock:Number(p.stock||0)}); }
+            
+            // Mandatory fields check
+            if(p.sku && p.name && p.price){ 
+                newProducts.push({
+                    id: pid('p'), 
+                    sku: p.sku, 
+                    name: p.name, 
+                    category: p.category, 
+                    price: Number(p.price), 
+                    stock: Number(p.stock||0),
+                    costPrice: Number(p.costprice||0),
+                    reorderPoint: Number(p.reorderpoint||5)
+                }); 
+            }
           }
-          State.products = [...State.products, ...newProducts];
-          saveState();
-          modal.remove();
-          renderAll();
-          alert(`Imported ${newProducts.length} products.`);
+          if(newProducts.length > 0){
+            State.products.push(...newProducts);
+            saveState();
+            showToast(`${newProducts.length} products imported successfully!`, 'success');
+            renderProducts();
+            logActivity('products_imported', { count: newProducts.length });
+          } else {
+            showToast('No valid products found in the file.', 'error');
+          }
+          closeModal();
         };
         reader.readAsText(file);
       });
     }
+
+    // --- Modals (CRUD forms) ---
+    function openProductModal(id = null){
+      const p = id ? State.products.find(x=>x.id===id) : {};
+      showModal(`${id ? 'Edit' : 'New'} Product`, `
+        <div class="grid cols-3">
+          <label>Name</label><input id="p-name" value="${escapeHtml(p.name||'')}" />
+          <label>SKU (Barcode)</label><input id="p-sku" value="${escapeHtml(p.sku||'')}" />
+          <label>Category</label><input id="p-category" value="${escapeHtml(p.category||'')}" />
+          <label>Selling Price (${State.settings.currency})</label><input type="number" id="p-price" value="${p.price||0}" min="0" />
+          <label>Cost Price (${State.settings.currency})</label><input type="number" id="p-cost" value="${p.costPrice||0}" min="0" />
+          <label>Stock Quantity</label><input type="number" id="p-stock" value="${p.stock||0}" min="0" />
+          <label>Reorder Point</label><input type="number" id="p-reorder" value="${p.reorderPoint||5}" min="1" />
+        </div>
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+            <button class='btn' id='modal-save'>Save</button>
+            <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, (modal) => {
+        const name = $('p-name').value;
+        const sku = $('p-sku').value;
+        const price = Number($('p-price').value);
+        const stock = Number($('p-stock').value);
+        if(!name || !sku || isNaN(price) || price < 0){ showToast('Invalid input.', 'error'); return; }
+
+        if(id){
+          Object.assign(p, {
+            name, sku, price, stock,
+            category: $('p-category').value,
+            costPrice: Number($('p-cost').value),
+            reorderPoint: Number($('p-reorder').value),
+          });
+          logActivity('product_updated', { id, name });
+        } else {
+          State.products.push({
+            id: pid('p'), name, sku, price, stock,
+            category: $('p-category').value,
+            costPrice: Number($('p-cost').value),
+            reorderPoint: Number($('p-reorder').value),
+          });
+          logActivity('product_added', { name });
+        }
+        saveState();
+        renderProducts();
+        closeModal();
+      });
+    }
+    
+    function openSupplierModal(id = null){
+      const s = id ? State.suppliers.find(x=>x.id===id) : {};
+      showModal(`${id ? 'Edit' : 'New'} Supplier`, `
+        <div class="grid cols-3" style="grid-template-columns: 1fr;">
+          <label>Name</label><input id="s-name" value="${escapeHtml(s.name||'')}" />
+          <label>Contact (Email/Phone)</label><input id="s-contact" value="${escapeHtml(s.contact||'')}" />
+          <label>Address</label><input id="s-address" value="${escapeHtml(s.address||'')}" />
+        </div>
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+            <button class='btn' id='modal-save'>Save</button>
+            <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, (modal) => {
+        const name = $('s-name').value;
+        if(!name){ showToast('Name is mandatory.', 'error'); return; }
+
+        if(id){
+          Object.assign(s, { name, contact: $('s-contact').value, address: $('s-address').value });
+          logActivity('supplier_updated', { id, name });
+        } else {
+          State.suppliers.push({ id: pid('s'), name, contact: $('s-contact').value, address: $('s-address').value });
+          logActivity('supplier_added', { name });
+        }
+        saveState();
+        renderSuppliers();
+        closeModal();
+      });
+    }
+    window.deleteSupplier = function(id){ if(!confirm('Delete supplier?')) return; State.suppliers = State.suppliers.filter(x=>x.id!==id); saveState(); renderSuppliers(); logActivity('supplier_deleted', { id }); }
+
+    function openExpenseModal(id = null){
+        const e = id ? State.expenses.find(x=>x.id===id) : {};
+        showModal(`${id ? 'Edit' : 'New'} Expense`, `
+            <div class="grid cols-3" style="grid-template-columns: 1fr;">
+                <label>Date</label><input type="date" id="e-date" value="${e.date ? new Date(e.date).toISOString().substring(0,10) : new Date().toISOString().substring(0,10)}" />
+                <label>Category</label><input id="e-category" placeholder="e.g., Rent, Utilities, Wages" value="${escapeHtml(e.category||'')}" />
+                <label>Description</label><textarea id="e-desc" placeholder="Details of the expense">${escapeHtml(e.description||'')}</textarea>
+                <label>Amount (${State.settings.currency})</label><input type="number" id="e-amount" value="${e.amount||0}" min="0" />
+            </div>
+            <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+                <button class='btn' id='modal-save'>Save</button>
+                <button class='btn secondary' id='modal-cancel'>Cancel</button>
+            </div>
+        `, (modal) => {
+            const date = $('e-date').value;
+            const category = $('e-category').value;
+            const description = $('e-desc').value;
+            const amount = Number($('e-amount').value);
+
+            if(!date || !category || !description || isNaN(amount) || amount <= 0){ showToast('Invalid input.', 'error'); return; }
+
+            if(id){
+                Object.assign(e, { date: new Date(date).toISOString(), category, description, amount });
+                logActivity('expense_updated', { id, category, amount });
+            } else {
+                State.expenses.push({ id: pid('e'), date: new Date(date).toISOString(), category, description, amount });
+                logActivity('expense_added', { category, amount });
+            }
+            saveState();
+            renderExpenses();
+            closeModal();
+        });
+    }
+    window.deleteExpense = function(id){ if(!confirm('Delete expense?')) return; State.expenses = State.expenses.filter(x=>x.id!==id); saveState(); renderExpenses(); logActivity('expense_deleted', { id }); }
+
+    function openCustomerModal(id = null){
+      const c = id ? State.customers.find(x=>x.id===id) : {};
+      showModal(`${id ? 'Edit' : 'New'} Customer`, `
+        <div class="grid cols-3" style="grid-template-columns: 1fr;">
+          <label>Name</label><input id="c-name" value="${escapeHtml(c.name||'')}" />
+          <label>Contact (Phone/Email)</label><input id="c-contact" value="${escapeHtml(c.contact||'')}" />
+          <label>Address</label><input id="c-address" value="${escapeHtml(c.address||'')}" />
+          ${id ? `<label>Credit Balance (${State.settings.currency})</label><input type="number" id="c-credit" value="${c.creditBalance||0}" readonly style="background:var(--bg);" />` : ''}
+        </div>
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+            <button class='btn' id='modal-save'>Save</button>
+            <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, (modal) => {
+        const name = $('c-name').value;
+        if(!name){ showToast('Name is mandatory.', 'error'); return; }
+
+        if(id){
+          Object.assign(c, { name, contact: $('c-contact').value, address: $('c-address').value });
+          logActivity('customer_updated', { id, name });
+        } else {
+          State.customers.push({ id: pid('c'), name, contact: $('c-contact').value, address: $('c-address').value, creditBalance: 0 });
+          logActivity('customer_added', { name });
+          // If customer was added from POS, re-render POS customers
+          if(document.getElementById('pos-page').classList.contains('hidden') === false) renderPOSCustomers();
+        }
+        saveState();
+        renderCustomers();
+        closeModal();
+      });
+    }
+    window.deleteCustomer = function(id){ 
+      if(!confirm('Delete customer?')) return; 
+      State.customers = State.customers.filter(x=>x.id!==id); 
+      saveState(); 
+      renderCustomers(); 
+      logActivity('customer_deleted', { id }); 
+    }
+    
+    function openEmployeeModal(id = null){
+      const u = id ? State.users.find(x=>x.id===id) : {};
+      const isNew = !id;
+      showModal(`${isNew ? 'New' : 'Edit'} Employee`, `
+        <div class="grid cols-3" style="grid-template-columns: 1fr;">
+          <label>Full Name</label><input id="u-name" value="${escapeHtml(u.name||'')}" />
+          <label>Username</label><input id="u-username" value="${escapeHtml(u.username||'')}" ${!isNew ? 'readonly' : ''} />
+          <label>Password ${isNew ? '' : '(Leave blank to keep old password)'}</label><input type="password" id="u-password" value="" />
+          <label>Role</label>
+          <select id="u-role">
+            <option value="admin" ${u.role==='admin' ? 'selected' : ''}>Admin</option>
+            <option value="cashier" ${u.role==='cashier' ? 'selected' : ''}>Cashier</option>
+          </select>
+        </div>
+        <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+            <button class='btn' id='modal-save'>Save</button>
+            <button class='btn secondary' id='modal-cancel'>Cancel</button>
+        </div>
+      `, async (modal) => {
+        const name = $('u-name').value;
+        const username = $('u-username').value;
+        const password = $('u-password').value;
+        const role = $('u-role').value;
+        if(!name || !username || (isNew && !password)){ showToast('Fill all mandatory fields.', 'error'); return; }
+        
+        if(isNew){
+          if(State.users.some(x=>x.username===username)){ showToast('Username already exists.', 'error'); return; }
+          const hashedPassword = await sha256Hex(password);
+          State.users.push({ id: pid('u'), name, username, password: hashedPassword, role });
+          logActivity('employee_added', { username });
+        } else {
+          Object.assign(u, { name, role });
+          if(password){ u.password = await sha256Hex(password); }
+          logActivity('employee_updated', { id, username });
+          if(u.id === currentUser.id) currentUser.role = u.role; // Update current session role
+        }
+
+        saveState();
+        renderEmployees();
+        applyRole();
+        closeModal();
+      });
+    }
+
+    // Purchase Order Modals
+    function openPurchaseOrderModal(id = null) {
+        let po = id ? State.purchases.find(p => p.id === id) : { items: [], totalCost: 0, status: 'Pending' };
+        let allProducts = State.products;
+        let allSuppliers = State.suppliers;
+        let isViewOnly = po.status === 'Received';
+
+        const poNumber = po.number || State.nextPurchase;
+        const supplierOptions = allSuppliers.map(s => `<option value="${s.id}" ${po.supplierId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+        const productOptions = allProducts.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.sku})</option>`).join('');
+        const itemRows = po.items.map((item, index) => `
+            <tr id="po-item-row-${index}">
+                <td>${escapeHtml(allProducts.find(p => p.id === item.productId)?.name || 'N/A')}</td>
+                <td><input type="number" class="po-qty" value="${item.quantity}" min="1" oninput="updatePOItem(${index})" ${isViewOnly ? 'readonly' : ''} /></td>
+                <td><input type="number" class="po-cost" value="${item.cost}" min="0" oninput="updatePOItem(${index})" ${isViewOnly ? 'readonly' : ''} /></td>
+                <td><span class="po-subtotal">${formatCurrency(item.quantity * item.cost)}</span></td>
+                <td>${isViewOnly ? '' : `<button class='btn danger' onclick='removePOItem(${index})'>X</button>`}</td>
+            </tr>
+        `).join('');
+
+        showModal(`Purchase Order ${id ? `#PO-${po.number}` : '(New)'} - ${po.status}`, `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div>PO #: <strong>#PO-${poNumber}</strong></div>
+                <div>Status: <strong style='color:${po.status === 'Received' ? 'var(--success)' : 'var(--error)'}'>${po.status}</strong></div>
+            </div>
+            <label for="po-supplier">Supplier:</label>
+            <select id="po-supplier" style="margin-bottom:12px;" ${isViewOnly ? 'disabled' : ''}>
+                <option value="">Select Supplier</option>${supplierOptions}
+            </select>
+
+            <h4 style="margin-top:12px;">Items</h4>
+            <div id="po-items-table" class="table-responsive">
+                <table>
+                    <thead><tr><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Subtotal</th><th>Action</th></tr></thead>
+                    <tbody id="po-items-list">${itemRows}</tbody>
+                </table>
+            </div>
+
+            ${isViewOnly ? '' : `
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <select id="po-add-product" style="flex:2"><option value="">Select Product to Add</option>${productOptions}</select>
+                    <button class="btn secondary" onclick="addPOItem()">Add</button>
+                </div>
+            `}
+
+            <div style="text-align:right;font-size:18px;font-weight:700;margin-top:12px;">Total Cost: <span id="po-total-cost">${formatCurrency(po.totalCost)}</span></div>
+            
+            <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+                ${po.status === 'Pending' ? `<button class='btn success' id='modal-receive'>Receive Stock</button>` : ''}
+                ${isViewOnly ? '' : `<button class='btn' id='modal-save'>Save PO</button>`}
+                <button class='btn secondary' id='modal-cancel'>Close</button>
+            </div>
+        `, (modal) => { 
+            savePurchaseOrder(id, poNumber, po.items); 
+        });
+
+        if (po.status === 'Pending') {
+            document.getElementById('modal-receive').onclick = () => receiveStock(id, po.items);
+        }
+    }
+
+    // Helper functions for Purchase Order Modal
+    let currentPOItems = [];
+    window.addPOItem = function(){
+        const select = $('po-add-product');
+        const productId = select.value;
+        if (!productId) return showToast('Please select a product.', 'error');
+
+        const product = State.products.find(p => p.id === productId);
+        if (!product) return showToast('Product not found.', 'error');
+
+        // Check if already in PO (optional, but good practice)
+        if (currentPOItems.some(item => item.productId === productId)) {
+            showToast('Product already in list. Adjust quantity.', 'info');
+            return;
+        }
+
+        currentPOItems.push({
+            productId: product.id,
+            productName: product.name,
+            quantity: 1,
+            cost: product.costPrice || 0
+        });
+        renderPOItemsList();
+    }
+
+    window.updatePOItem = function(index) {
+        const row = $(`po-item-row-${index}`);
+        const qty = Number(row.querySelector('.po-qty').value);
+        const cost = Number(row.querySelector('.po-cost').value);
+
+        if (isNaN(qty) || qty < 1 || isNaN(cost) || cost < 0) return;
+
+        currentPOItems[index].quantity = qty;
+        currentPOItems[index].cost = cost;
+        row.querySelector('.po-subtotal').textContent = formatCurrency(qty * cost);
+        updatePOTotal();
+    }
+
+    window.removePOItem = function(index) {
+        currentPOItems.splice(index, 1);
+        renderPOItemsList();
+    }
+
+    function renderPOItemsList() {
+        const listEl = $('po-items-list');
+        listEl.innerHTML = currentPOItems.map((item, index) => `
+            <tr id="po-item-row-${index}">
+                <td>${escapeHtml(item.productName)}</td>
+                <td><input type="number" class="po-qty" value="${item.quantity}" min="1" oninput="updatePOItem(${index})" /></td>
+                <td><input type="number" class="po-cost" value="${item.cost}" min="0" oninput="updatePOItem(${index})" /></td>
+                <td><span class="po-subtotal">${formatCurrency(item.quantity * item.cost)}</span></td>
+                <td><button class='btn danger' onclick='removePOItem(${index})'>X</button></td>
+            </tr>
+        `).join('');
+        updatePOTotal();
+    }
+
+    function updatePOTotal() {
+        const total = currentPOItems.reduce((sum, item) => sum + (item.quantity * item.cost), 0);
+        $('po-total-cost').textContent = formatCurrency(total);
+        return total;
+    }
+
+    function savePurchaseOrder(id, poNumber, existingItems) {
+        const supplierId = $('po-supplier').value;
+        const totalCost = updatePOTotal();
+
+        if (!supplierId || currentPOItems.length === 0) {
+            showToast('Select a supplier and add at least one item.', 'error');
+            return;
+        }
+
+        if (id) {
+            const po = State.purchases.find(p => p.id === id);
+            Object.assign(po, {
+                supplierId,
+                items: currentPOItems,
+                totalCost
+            });
+            logActivity('purchase_order_updated', { poId: id });
+        } else {
+            State.purchases.push({
+                id: pid('po'),
+                number: State.nextPurchase++,
+                supplierId,
+                date: new Date().toISOString(),
+                items: currentPOItems,
+                totalCost,
+                status: 'Pending'
+            });
+            logActivity('purchase_order_created', { poNumber });
+        }
+        
+        saveState();
+        renderPurchases();
+        closeModal();
+        showToast('Purchase Order saved.', 'success');
+    }
+
+    function receiveStock(id, items) {
+        const po = State.purchases.find(p => p.id === id);
+        if (!po || po.status === 'Received') return;
+
+        items.forEach(item => {
+            const product = State.products.find(p => p.id === item.productId);
+            if (product) {
+                product.stock += item.quantity;
+                product.costPrice = item.cost; // Update cost price based on new purchase
+            }
+        });
+
+        po.status = 'Received';
+        saveState();
+        renderPurchases();
+        closeModal();
+        showToast(`Stock received for PO #PO-${po.number}. Inventory updated.`, 'success');
+        logActivity('stock_received', { poId: id });
+    }
+    
+    // Renders the product catalog for the POS page
+    function renderCatalog(q=''){ 
+        const el = document.getElementById('catalog'); 
+        if(!el) return; 
+        const cat = document.getElementById('pos-category').value; 
+        const list = State.products.filter(p=> (p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku||'').toLowerCase().includes(q.toLowerCase())) && (cat==='all' || p.category===cat)); 
+        if(list.length===0){ el.innerHTML = '<div class="small" style="padding:12px">No matching products</div>'; return; } 
+        el.innerHTML = list.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--border)">
+            <div>
+                <strong style='font-size:16px;'>${escapeHtml(p.name)}</strong>
+                ${p.imageUrl ? `<img src="${p.imageUrl}" style="width:40px;height:40px;border-radius:4px;object-fit:cover;margin-right:8px;display:inline-block;" />` : ''}
+                <div class='small'>${p.sku||''} • ${p.category||''} • Stock: <span style='color:${p.stock<=(p.reorderPoint||5)?"var(--error)":"inherit"}'>${p.stock}</span></div>
+            </div>
+            <div style='text-align:right'>
+                <div style='font-weight:800'>${formatCurrency(p.price)}</div>
+                <button class='btn' style='padding:4px 8px;font-size:12px;margin-top:4px;' onclick="addToCart('${p.id}')">Add</button>
+            </div>
+        </div>`).join('');
+    }
+    
+    function openStockAdjustmentModal(){
+        showModal('Stock Adjustment', `
+            <p>Manually adjust product stock levels. This action is logged.</p>
+            <label for="adj-product">Product:</label>
+            <select id="adj-product" style="margin-bottom:12px">
+                ${State.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.sku}) - Current: ${p.stock}</option>`).join('')}
+            </select>
+            <label for="adj-new-stock">New Stock Level:</label>
+            <input type="number" id="adj-new-stock" placeholder="Enter the new total stock quantity" min="0" />
+            <label for="adj-reason">Reason:</label>
+            <textarea id="adj-reason" placeholder="e.g., Inventory Count, Damage, Theft"></textarea>
+            <div style='display:flex;gap:8px;justify-content:flex-end;margin-top:12px'>
+                <button class='btn' id='modal-save'>Apply Adjustment</button>
+                <button class='btn secondary' id='modal-cancel'>Cancel</button>
+            </div>
+        `, (modal) => {
+            const productId = $('adj-product').value;
+            const newStock = Number($('adj-new-stock').value);
+            const reason = $('adj-reason').value.trim();
+
+            if (!productId || isNaN(newStock) || newStock < 0 || !reason) {
+                showToast('Please fill all fields with valid data.', 'error');
+                return;
+            }
+
+            const product = State.products.find(p => p.id === productId);
+            if (!product) return;
+
+            const oldStock = product.stock;
+            const difference = newStock - oldStock;
+            product.stock = newStock;
+            
+            saveState();
+            renderInventory();
+            closeModal();
+            showToast(`Stock for ${product.name} updated from ${oldStock} to ${newStock}.`, 'success');
+            logActivity('stock_adjusted', { productId, productName: product.name, oldStock, newStock, difference, reason });
+        });
+    }
+
   </script>
 </body>
 </html>
-
